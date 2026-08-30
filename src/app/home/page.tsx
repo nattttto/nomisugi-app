@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Plus, Trash2 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import DrinkLogModal from "../components/DrinkLogModal";
+import SessionPlanModal from "../components/SessionPlanModal";
+import PacePlanCard from "../components/PacePlanCard";
 import AlcoholTimer from "../components/AlcoholTimer";
 import WarningPanel from "../components/WarningPanel";
 import SessionSummary from "../components/SessionSummary";
@@ -20,15 +22,17 @@ import {
   removeDrinkRecord,
   startSession,
 } from "../lib/firestoreUtils";
-import type { DrinkRecord, DrinkingSession } from "../lib/types/firestore";
+import type { DrinkRecord, DrinkingSession, SessionPlan } from "../lib/types/firestore";
 import { evaluateWarnings } from "../lib/warnings";
-import { personalPaceFromSessions } from "../lib/stats";
-import { DEFAULT_DAY_START_HOUR } from "../lib/constants";
+import { personalPaceFromSessions, weekdayOf } from "../lib/stats";
+import { buildPersonalBaseline, personalInsights } from "../lib/personalization";
+import { useDrinkingNotifications } from "../lib/useNotifications";
+import { DEFAULT_DAY_START_HOUR, DEFAULT_GOAL_ALCOHOL_G } from "../lib/constants";
 import { formatDuration, formatGrams, formatInt, formatTime } from "../lib/format";
 import { findDrinkType } from "../lib/drinks";
 
-/** 個人のペースを出すために読む、直近のセッション数 */
-const PACE_SAMPLE_SESSIONS = 20;
+/** 個人のペースと傾向を出すために読む、直近のセッション数 */
+const PERSONAL_SAMPLE_SESSIONS = 30;
 
 export default function HomePage() {
   const { user, profile, loading } = useCurrentUser();
@@ -36,17 +40,17 @@ export default function HomePage() {
   const [records, setRecords] = useState<DrinkRecord[]>([]);
   const [loadingSession, setLoadingSession] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
+  const [planModalOpen, setPlanModalOpen] = useState(false);
   const [summarySession, setSummarySession] = useState<DrinkingSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
-  // 過去の飲酒から出した個人のペース。ペース警告の基準に使う
-  const [pace, setPace] = useState<{ minutesPerDrink: number | null; sampleSize: number }>({
-    minutesPerDrink: null,
-    sampleSize: 0,
-  });
+  /** 過去の飲酒。ペースの基準と、その人だけの気づきの両方に使う */
+  const [pastSessions, setPastSessions] = useState<DrinkingSession[]>([]);
 
   const dayStartHour = profile?.settings.dayStartHour ?? DEFAULT_DAY_START_HOUR;
-  const goalAlcoholG = profile?.goal.alcoholGrams ?? null;
+  const profileGoal = profile?.goal.alcoholGrams ?? null;
+  // 計画を立てた回は、その日の上限がセッションに入っている
+  const goalAlcoholG = session?.goalAlcoholG ?? profileGoal;
 
   // 経過時間の表示を1分ごとに更新する（秒まで動かす必要はない）
   useEffect(() => {
@@ -84,15 +88,26 @@ export default function HomePage() {
     if (!loading && user) void reload();
   }, [loading, user, reload]);
 
-  // 個人のペースは1杯記録するたびに変わるものではないので、開いたときに1回だけ読む
+  // 過去の傾向は1杯記録するたびに変わるものではないので、開いたときに1回だけ読む
   useEffect(() => {
     if (loading || !user) return;
-    void fetchRecentSessions(user.uid, PACE_SAMPLE_SESSIONS)
-      .then((sessions) => setPace(personalPaceFromSessions(sessions)))
+    void fetchRecentSessions(user.uid, PERSONAL_SAMPLE_SESSIONS)
+      .then(setPastSessions)
       .catch(() => {
         // 過去データが読めなくても、一般的な目安で警告は出せる
       });
   }, [loading, user]);
+
+  /** 終わった回だけを基準にする。進行中の回は合計が途中なので混ぜない */
+  const finishedSessions = useMemo(
+    () => pastSessions.filter((s) => s.status === "finished"),
+    [pastSessions],
+  );
+
+  const pace = useMemo(
+    () => personalPaceFromSessions(finishedSessions),
+    [finishedSessions],
+  );
 
   const timerDrinks = useMemo(
     () => records.map((r) => ({ alcoholG: r.alcoholG, drankAtMs: r.drankAt.toMillis() })),
@@ -101,7 +116,8 @@ export default function HomePage() {
 
   const warnings = useMemo(() => {
     if (!session || !profile || !profile.settings.warningsEnabled) return [];
-    return evaluateWarnings({
+
+    const general = evaluateWarnings({
       records: records.map((r) => ({
         alcoholG: r.alcoholG,
         quantity: r.quantity,
@@ -116,12 +132,33 @@ export default function HomePage() {
       personalMinutesPerDrink: pace.minutesPerDrink,
       personalSampleSize: pace.sampleSize,
     });
-  }, [session, profile, records, now, goalAlcoholG, pace]);
+
+    const baseline = buildPersonalBaseline(
+      finishedSessions,
+      weekdayOf(session.drinkingDay),
+    );
+    const personal = personalInsights(baseline, {
+      totalDrinks: session.totalDrinks,
+      totalAlcoholG: session.totalAlcoholG,
+      waterCount: session.waterCount,
+    });
+
+    return [...general, ...personal];
+  }, [session, profile, records, now, goalAlcoholG, pace, finishedSessions]);
+
+  useDrinkingNotifications(profile?.settings.notificationsEnabled === true, warnings);
+
+  async function handleStartWithPlan(plan: SessionPlan, planGoalAlcoholG: number) {
+    if (!user) return;
+    await startSession(user.uid, dayStartHour, planGoalAlcoholG, plan);
+    setPlanModalOpen(false);
+    await reload();
+  }
 
   async function handleSubmitRecord(record: Omit<DrinkRecord, "id">) {
     if (!user) return;
-    // 1杯目ならセッションを作ってから記録する
-    const target = session ?? (await startSession(user.uid, dayStartHour, goalAlcoholG));
+    // 計画を立てずに1杯目から記録した場合は、ここでセッションを作る
+    const target = session ?? (await startSession(user.uid, dayStartHour, profileGoal));
     await addDrinkRecord(user.uid, target.id, record);
     setModalOpen(false);
     await reload();
@@ -168,6 +205,7 @@ export default function HomePage() {
   const goalRatio =
     goalAlcoholG && session ? Math.min(1, session.totalAlcoholG / goalAlcoholG) : 0;
   const overGoal = goalRest !== null && goalRest < 0;
+  const todayIsPlanned = session?.plan != null;
 
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-32 pt-8">
@@ -241,11 +279,30 @@ export default function HomePage() {
         )}
       </section>
 
+      {/* 飲み始める前に計画を立てられるのは、まだ始まっていないときだけ */}
+      {!session && (
+        <button
+          onClick={() => setPlanModalOpen(true)}
+          className="sticker-press mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-paper px-4 py-4 font-extrabold text-ink"
+        >
+          <CalendarClock className="h-5 w-5" strokeWidth={3} />
+          今日は飲み会？　先に計画を立てる
+        </button>
+      )}
+
+      {session && todayIsPlanned && (
+        <div className="mb-4">
+          <PacePlanCard session={session} nowMs={now} />
+        </div>
+      )}
+
       {goalAlcoholG !== null && (
         <section className="sticker-card mb-4 p-5">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-sm font-extrabold text-muted">🎯 今日の目標</h2>
-            <span className="tabular text-sm font-extrabold">純アルコール {goalAlcoholG}g 以内</span>
+            <span className="tabular text-sm font-extrabold">
+              純アルコール {goalAlcoholG}g 以内
+            </span>
           </div>
           <div className="h-5 w-full overflow-hidden rounded-full bg-cream shadow-sticker">
             <div
@@ -340,6 +397,14 @@ export default function HomePage() {
         >
           今日は終了
         </button>
+      )}
+
+      {planModalOpen && (
+        <SessionPlanModal
+          defaultGoalAlcoholG={profileGoal ?? DEFAULT_GOAL_ALCOHOL_G}
+          onClose={() => setPlanModalOpen(false)}
+          onStart={handleStartWithPlan}
+        />
       )}
 
       {modalOpen && (

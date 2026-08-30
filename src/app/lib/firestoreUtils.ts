@@ -23,6 +23,7 @@ import { db } from "./firebase";
 import type {
   DrinkRecord,
   DrinkingSession,
+  SessionPlan,
   UserProfile,
   UsernameRecord,
 } from "./types/firestore";
@@ -132,11 +133,17 @@ export async function fetchRecentSessions(
   return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
 }
 
-/** 新しい飲酒を始める */
+/**
+ * 新しい飲酒を始める。
+ *
+ * plan を渡すと「今日の計画」を立てた回になる。渡さなければ、
+ * 1杯目を記録した勢いで始まった回として plan は null のままにする。
+ */
 export async function startSession(
   uid: string,
   dayStartHour: number,
   goalAlcoholG: number | null,
+  plan: SessionPlan | null = null,
 ): Promise<DrinkingSession> {
   const now = new Date();
   const ref = doc(getSessionsCollectionRef(uid));
@@ -154,6 +161,7 @@ export async function startSession(
     totalCost: 0,
     waterCount: 0,
     goalAlcoholG,
+    plan,
   };
   await setDoc(ref, session);
   return session;

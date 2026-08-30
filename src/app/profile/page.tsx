@@ -10,6 +10,11 @@ import { useCurrentUser } from "../lib/useCurrentUser";
 import { patchUserProfile } from "../lib/firestoreUtils";
 import { findUsernameByUid, validateDisplayName } from "../lib/username";
 import { metabolismGramsPerHour } from "../lib/alcohol";
+import {
+  notificationPermission,
+  notificationsSupported,
+  requestNotificationPermission,
+} from "../lib/useNotifications";
 import { toStandardDrinks } from "../lib/warnings";
 import {
   MEDICAL_DISCLAIMER,
@@ -46,6 +51,8 @@ export default function ProfilePage() {
   const [goalAlcohol, setGoalAlcohol] = useState("40");
   const [goalDrinks, setGoalDrinks] = useState("");
   const [warningsEnabled, setWarningsEnabled] = useState(true);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [permission, setPermission] = useState<NotificationPermission | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -60,7 +67,26 @@ export default function ProfilePage() {
     setGoalAlcohol(profile.goal.alcoholGrams.toString());
     setGoalDrinks(profile.goal.drinks?.toString() ?? "");
     setWarningsEnabled(profile.settings.warningsEnabled);
+    setNotificationsEnabled(profile.settings.notificationsEnabled === true);
   }, [profile]);
+
+  useEffect(() => {
+    setPermission(notificationPermission());
+  }, []);
+
+  /**
+   * 通知の許可は「入」にした瞬間にだけ聞く。
+   * 画面を開いただけで許可を求めると、たいてい拒否されて二度と聞けなくなる。
+   */
+  async function handleToggleNotifications(next: boolean) {
+    if (!next) {
+      setNotificationsEnabled(false);
+      return;
+    }
+    const result = await requestNotificationPermission();
+    setPermission(result);
+    setNotificationsEnabled(result === "granted");
+  }
 
   useEffect(() => {
     if (!user) return;
@@ -92,7 +118,7 @@ export default function ProfilePage() {
         weightKg: toNumberOrNull(weightKg),
         sex,
         goal: { alcoholGrams: goal, drinks: toNumberOrNull(goalDrinks) },
-        settings: { ...profile.settings, warningsEnabled },
+        settings: { ...profile.settings, warningsEnabled, notificationsEnabled },
       };
       await patchUserProfile(user.uid, patch);
       // Auth 側の表示名もそろえる
@@ -242,8 +268,8 @@ export default function ProfilePage() {
         </label>
       </section>
 
-      <section className="sticker-card mb-4 p-5">
-        <h2 className="mb-3 text-sm font-extrabold text-muted">設定</h2>
+      <section className="sticker-card mb-4 space-y-4 p-5">
+        <h2 className="text-sm font-extrabold text-muted">設定</h2>
         <label className="flex items-center justify-between gap-3">
           <span className="text-sm font-extrabold">飲み過ぎ・ペースの警告を出す</span>
           <input
@@ -253,6 +279,26 @@ export default function ProfilePage() {
             className="h-6 w-6 shrink-0 accent-beer"
           />
         </label>
+
+        <div>
+          <label className="flex items-center justify-between gap-3">
+            <span className="text-sm font-extrabold">画面を見ていないときに通知する</span>
+            <input
+              type="checkbox"
+              checked={notificationsEnabled}
+              onChange={(e) => void handleToggleNotifications(e.target.checked)}
+              disabled={!notificationsSupported()}
+              className="h-6 w-6 shrink-0 accent-beer disabled:opacity-40"
+            />
+          </label>
+          <p className="mt-2 text-xs font-bold leading-relaxed text-muted">
+            {!notificationsSupported()
+              ? "この端末・ブラウザは通知に対応していません。"
+              : permission === "denied"
+                ? "ブラウザ側で通知がブロックされています。サイトの設定から許可してください。"
+                : "アプリを開いている間だけ届きます。閉じている間に届く通知には対応していません。"}
+          </p>
+        </div>
       </section>
 
       {message && (

@@ -28,6 +28,11 @@ export interface UserSettings {
   dayStartHour: number;
   /** ペースや目標超過の警告を出すか */
   warningsEnabled: boolean;
+  /**
+   * 画面を見ていないときにブラウザ通知を出すか。
+   * 後から足した項目なので、持っていない既存ユーザーは「切」として扱う。
+   */
+  notificationsEnabled?: boolean;
 }
 
 export interface UserProfile {
@@ -45,6 +50,22 @@ export interface UserProfile {
 }
 
 export type SessionStatus = "active" | "finished";
+
+/** ふだんの晩酌か、飲み会か */
+export type SessionMode = "solo" | "party";
+
+/**
+ * 飲み始める前に立てる、その日の計画。
+ *
+ * 「今日は飲み会だから多めに飲む」を隠さずに宣言してもらう。
+ * 目標を無理に低く固定するより、実際の予定に合わせた上限を置いたほうが、
+ * 記録も介入も現実に効く。
+ */
+export interface SessionPlan {
+  mode: SessionMode;
+  /** 何時までにする予定か。未設定なら null */
+  endBy: Timestamp | null;
+}
 
 /**
  * 1回の飲酒（飲み会1回ぶん）。
@@ -74,6 +95,11 @@ export interface DrinkingSession {
   waterCount: number;
   /** 終了時点の目標。後から目標を変えても達成判定が揺れないようにスナップショットを持つ */
   goalAlcoholG: number | null;
+  /**
+   * その日の計画。計画を立てずに1杯目から記録しはじめた回は null。
+   * 後から足した項目なので、持っていない既存の記録は undefined になる。
+   */
+  plan?: SessionPlan | null;
 }
 
 export interface DrinkRecord {
