@@ -9,7 +9,12 @@ import YearlyStats from "../components/YearlyStats";
 import PatternStats from "../components/PatternStats";
 import AchievementList from "../components/AchievementList";
 import { useCurrentUser } from "../lib/useCurrentUser";
-import { fetchRecentSessions, fetchSessionsBetween } from "../lib/firestoreUtils";
+import {
+  fetchRecentRestDays,
+  fetchRecentSessions,
+  fetchRestDaysBetween,
+  fetchSessionsBetween,
+} from "../lib/firestoreUtils";
 import { monthKeyOf, previousMonthKey } from "../lib/stats";
 import { riskAlcoholG } from "../lib/warnings";
 import { DEFAULT_DAY_START_HOUR } from "../lib/constants";
@@ -42,6 +47,9 @@ export default function HistoryPage() {
   const [monthCache, setMonthCache] = useState<Record<string, DrinkingSession[]>>({});
   const [yearCache, setYearCache] = useState<Record<number, DrinkingSession[]>>({});
   const [allSessions, setAllSessions] = useState<DrinkingSession[] | null>(null);
+  // 休肝日は日付キーの配列。月ごとと、称号用の全期間ぶんを持つ
+  const [restDayMonthCache, setRestDayMonthCache] = useState<Record<string, string[]>>({});
+  const [allRestDays, setAllRestDays] = useState<string[] | null>(null);
 
   const [monthKey, setMonthKey] = useState(() => monthKeyOf(new Date()));
   const [year, setYear] = useState(() => new Date().getFullYear());
@@ -60,15 +68,24 @@ export default function HistoryPage() {
         // 前月比を出すため、前月のはじめから当月の終わりまでをまとめて取る
         const from = `${previousMonthKey(monthKey)}-01`;
         const to = `${monthKey}-31`;
-        const sessions = await fetchSessionsBetween(user.uid, from, to);
+        const [sessions, restDays] = await Promise.all([
+          fetchSessionsBetween(user.uid, from, to),
+          fetchRestDaysBetween(user.uid, `${monthKey}-01`, `${monthKey}-31`),
+        ]);
         setMonthCache((prev) => ({ ...prev, [monthKey]: sessions }));
+        setRestDayMonthCache((prev) => ({ ...prev, [monthKey]: restDays }));
       }
       if (tab === "yearly" && !yearCache[year]) {
         const sessions = await fetchSessionsBetween(user.uid, `${year}-01-01`, `${year}-12-31`);
         setYearCache((prev) => ({ ...prev, [year]: sessions }));
       }
       if (tab === "pattern" && allSessions === null) {
-        setAllSessions(await fetchRecentSessions(user.uid, PATTERN_MAX_SESSIONS));
+        const [sessions, restDays] = await Promise.all([
+          fetchRecentSessions(user.uid, PATTERN_MAX_SESSIONS),
+          fetchRecentRestDays(user.uid, PATTERN_MAX_SESSIONS),
+        ]);
+        setAllSessions(sessions);
+        setAllRestDays(restDays);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込みに失敗しました。");
@@ -156,7 +173,12 @@ export default function HistoryPage() {
           {monthSessions === undefined ? (
             loadingText
           ) : (
-            <MonthlyStats sessions={monthSessions} monthKey={monthKey} riskAlcoholG={risk} />
+            <MonthlyStats
+              sessions={monthSessions}
+              monthKey={monthKey}
+              riskAlcoholG={risk}
+              restDays={restDayMonthCache[monthKey] ?? []}
+            />
           )}
         </>
       )}
@@ -174,7 +196,7 @@ export default function HistoryPage() {
         ) : (
           <div className="space-y-4">
             <PatternStats sessions={allSessions} dayStartHour={dayStartHour} />
-            <AchievementList sessions={allSessions} dayStartHour={dayStartHour} />
+            <AchievementList sessions={allSessions} restDayKeys={allRestDays ?? []} />
           </div>
         ))}
 

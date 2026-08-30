@@ -1,17 +1,16 @@
 "use client";
 
 import { evaluateAchievements, goalStreaks } from "../lib/achievements";
-import { toDrinkingDay } from "../lib/drinkingDay";
 import type { DrinkingSession } from "../lib/types/firestore";
 
 interface Props {
   sessions: DrinkingSession[];
-  dayStartHour: number;
+  /** 明示的に記録された休肝日 */
+  restDayKeys: string[];
 }
 
-export default function AchievementList({ sessions, dayStartHour }: Props) {
-  const today = toDrinkingDay(new Date(), dayStartHour);
-  const achievements = evaluateAchievements(sessions, today);
+export default function AchievementList({ sessions, restDayKeys }: Props) {
+  const achievements = evaluateAchievements(sessions, restDayKeys);
   const streak = goalStreaks(sessions);
   const achievedCount = achievements.filter((a) => a.achieved).length;
 

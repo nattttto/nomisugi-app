@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { M_PLUS_Rounded_1c } from "next/font/google";
+import PwaRegister from "./components/PwaRegister";
 import "./globals.css";
 
 /**
@@ -48,7 +49,10 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ja" className={rounded.variable}>
-      <body className="font-rounded antialiased">{children}</body>
+      <body className="font-rounded antialiased">
+        {children}
+        <PwaRegister />
+      </body>
     </html>
   );
 }

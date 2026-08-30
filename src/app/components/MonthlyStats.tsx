@@ -17,6 +17,8 @@ interface Props {
   sessions: DrinkingSession[];
   monthKey: string;
   riskAlcoholG: number;
+  /** その月に「飲まなかった」と記録された日 */
+  restDays: string[];
 }
 
 /** 増減の矢印。飲酒量は「減った＝良い」なので、減少を mint にする */
@@ -70,12 +72,14 @@ function Stat({
   );
 }
 
-export default function MonthlyStats({ sessions, monthKey, riskAlcoholG }: Props) {
+export default function MonthlyStats({ sessions, monthKey, riskAlcoholG, restDays }: Props) {
   const [year, month] = monthKey.split("-").map(Number);
   const current = summarizeSessions(filterByMonth(sessions, monthKey));
   const previous = summarizeSessions(filterByMonth(sessions, previousMonthKey(monthKey)));
   const diff = diffSummaries(current, previous);
   const totals = dailyTotals(filterByMonth(sessions, monthKey));
+  // 飲んだ日は休肝日として数えない（両方記録されていても実績が優先）
+  const restDaySet = new Set(restDays.filter((dayKey) => !totals.has(dayKey)));
 
   return (
     <div className="space-y-4">
@@ -87,6 +91,7 @@ export default function MonthlyStats({ sessions, monthKey, riskAlcoholG }: Props
         <dl className="grid grid-cols-2 gap-2">
           <Stat label="飲酒日数" value={`${current.drinkingDays} 日`} />
           <Stat label="飲酒回数" value={`${current.sessionCount} 回`} />
+          <Stat label="休肝日" value={`${restDaySet.size} 日`} />
           <Stat label="総杯数" value={`${current.totalDrinks} 杯`} />
           <Stat label="純アルコール" value={`${formatGrams(current.totalAlcoholG)} g`} accent />
           <Stat label="推定カロリー" value={`${formatInt(current.totalCalories)}`} />
@@ -134,7 +139,12 @@ export default function MonthlyStats({ sessions, monthKey, riskAlcoholG }: Props
 
       <section className="sticker-card p-5">
         <h2 className="mb-4 text-sm font-extrabold text-muted">カレンダー</h2>
-        <CalendarGrid monthKey={monthKey} totals={totals} riskAlcoholG={riskAlcoholG} />
+        <CalendarGrid
+          monthKey={monthKey}
+          totals={totals}
+          riskAlcoholG={riskAlcoholG}
+          restDays={restDaySet}
+        />
       </section>
     </div>
   );

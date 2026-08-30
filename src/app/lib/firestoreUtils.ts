@@ -8,9 +8,12 @@ import {
   DocumentReference,
   Timestamp,
   collection,
+  deleteDoc,
   doc,
+  documentId,
   getDoc,
   getDocs,
+  increment,
   limit,
   orderBy,
   query,
@@ -23,6 +26,7 @@ import { db } from "./firebase";
 import type {
   DrinkRecord,
   DrinkingSession,
+  RestDay,
   SessionPlan,
   UserProfile,
   UsernameRecord,
@@ -255,6 +259,74 @@ export async function fetchRecords(uid: string, sessionId: string): Promise<Drin
     query(getRecordsCollectionRef(uid, sessionId), orderBy("drankAt", "asc")),
   );
   return snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+}
+
+/* ── よく飲むお酒のカウント ────────────────────────────── */
+
+/**
+ * 「種類:サイズ」の記録回数を増やす。
+ *
+ * **記録そのものとは切り離して、失敗しても無視する。**
+ * これはワンタップ記録のための便宜であって、失われても記録の正しさには影響しない。
+ * プロフィールが無いユーザーで update が失敗しても、飲酒の記録は通したい。
+ */
+export async function bumpDrinkCount(
+  uid: string,
+  key: string,
+  quantity: number,
+): Promise<void> {
+  try {
+    await updateDoc(getUserDocRef(uid), { [`drinkCounts.${key}`]: increment(quantity) });
+  } catch {
+    // 記録は既に済んでいる。カウントだけ諦める
+  }
+}
+
+/* ── 休肝日 ────────────────────────────────────────────── */
+
+export function getRestDaysCollectionRef(uid: string) {
+  return collection(db, "users", uid, "restDays") as CollectionReference<RestDay>;
+}
+
+/** ドキュメントIDを飲酒日キーにしてあるので、同じ日を二重に登録できない */
+export async function markRestDay(uid: string, dayKey: string): Promise<void> {
+  await setDoc(doc(getRestDaysCollectionRef(uid), dayKey), {
+    dayKey,
+    recordedAt: Timestamp.now(),
+  });
+}
+
+export async function unmarkRestDay(uid: string, dayKey: string): Promise<void> {
+  await deleteDoc(doc(getRestDaysCollectionRef(uid), dayKey));
+}
+
+export async function isRestDay(uid: string, dayKey: string): Promise<boolean> {
+  const snap = await getDoc(doc(getRestDaysCollectionRef(uid), dayKey));
+  return snap.exists();
+}
+
+/** 飲酒日キーの範囲で休肝日を取る。キーがドキュメントIDなので範囲検索はIDで引く */
+export async function fetchRestDaysBetween(
+  uid: string,
+  fromDayKey: string,
+  toDayKey: string,
+): Promise<string[]> {
+  const snap = await getDocs(
+    query(
+      getRestDaysCollectionRef(uid),
+      where(documentId(), ">=", fromDayKey),
+      where(documentId(), "<=", toDayKey),
+    ),
+  );
+  return snap.docs.map((d) => d.id);
+}
+
+/** 直近の休肝日を新しい順に取る。称号の判定で使う */
+export async function fetchRecentRestDays(uid: string, count: number): Promise<string[]> {
+  const snap = await getDocs(
+    query(getRestDaysCollectionRef(uid), orderBy(documentId(), "desc"), limit(count)),
+  );
+  return snap.docs.map((d) => d.id);
 }
 
 /* ── 自動クローズ ──────────────────────────────────────── */

@@ -6,6 +6,7 @@ import { ChevronLeft, Loader2, X } from "lucide-react";
 import { DRINK_TYPES, type DrinkType } from "../lib/drinks";
 import { drinkCalories, metabolismDurationMs, pureAlcoholGrams } from "../lib/alcohol";
 import { formatDuration, formatGrams, formatInt } from "../lib/format";
+import { drinkCountKey } from "../lib/quickDrinks";
 import type { DrinkRecord } from "../lib/types/firestore";
 
 interface Props {
@@ -15,7 +16,8 @@ interface Props {
   currentCalories: number;
   goalAlcoholG: number | null;
   onClose: () => void;
-  onSubmit: (record: Omit<DrinkRecord, "id">) => Promise<void>;
+  /** countKey は「よく飲むもの」の回数を数えるためのもの。手入力の1杯は null */
+  onSubmit: (record: Omit<DrinkRecord, "id">, countKey: string | null) => Promise<void>;
 }
 
 export default function DrinkLogModal({
@@ -63,18 +65,21 @@ export default function DrinkLogModal({
     setSubmitting(true);
     setError(null);
     try {
-      await onSubmit({
-        drinkTypeId: drink.id,
-        drinkLabel: drink.label,
-        sizeLabel: drink.isCustom ? `${volumeMl}mL / ${abvPercent}%` : (size?.label ?? ""),
-        volumeMl,
-        abvPercent,
-        quantity,
-        alcoholG: addedAlcohol,
-        calories: addedCalories,
-        cost: costText.trim() === "" ? null : Number(costText) || 0,
-        drankAt: Timestamp.now(),
-      });
+      await onSubmit(
+        {
+          drinkTypeId: drink.id,
+          drinkLabel: drink.label,
+          sizeLabel: drink.isCustom ? `${volumeMl}mL / ${abvPercent}%` : (size?.label ?? ""),
+          volumeMl,
+          abvPercent,
+          quantity,
+          alcoholG: addedAlcohol,
+          calories: addedCalories,
+          cost: costText.trim() === "" ? null : Number(costText) || 0,
+          drankAt: Timestamp.now(),
+        },
+        drink.isCustom || !size ? null : drinkCountKey(drink.id, size.id),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "記録に失敗しました。");
       setSubmitting(false);

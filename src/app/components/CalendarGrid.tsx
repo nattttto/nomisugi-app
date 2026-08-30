@@ -15,6 +15,8 @@ interface Props {
   totals: Map<string, DayTotal>;
   /** リスクの目安。性別によって変わるので呼び出し側から渡す */
   riskAlcoholG?: number;
+  /** 明示的に「飲まなかった」と記録された日 */
+  restDays?: Set<string>;
 }
 
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
@@ -34,6 +36,7 @@ export default function CalendarGrid({
   monthKey,
   totals,
   riskAlcoholG = RISK_ALCOHOL_G_MALE,
+  restDays,
 }: Props) {
   const [year, month] = monthKey.split("-").map(Number);
   const firstOfMonth = new Date(year, month - 1, 1);
@@ -67,24 +70,29 @@ export default function CalendarGrid({
           const dayKey = `${monthKey}-${String(dayNumber).padStart(2, "0")}`;
           const total = totals.get(dayKey);
           const alcoholG = total?.alcoholG ?? 0;
+          // 飲んだ日が優先。休肝日として記録してあっても実際に飲んでいれば飲酒日として出す
+          const rested = !total && restDays?.has(dayKey) === true;
 
           return (
             <div
               key={dayKey}
-              className={`flex aspect-square flex-col items-center justify-center rounded-lg border-[2px] border-ink font-extrabold ${toneFor(
-                alcoholG,
-                riskAlcoholG,
-              )}`}
+              className={`flex aspect-square flex-col items-center justify-center rounded-lg border-[2px] border-ink font-extrabold ${
+                rested ? "bg-mint text-ink" : toneFor(alcoholG, riskAlcoholG)
+              }`}
               title={
                 total
                   ? `${dayNumber}日：${total.drinks}杯 / ${formatGrams(alcoholG)}g`
-                  : `${dayNumber}日：飲酒なし`
+                  : rested
+                    ? `${dayNumber}日：休肝日`
+                    : `${dayNumber}日：記録なし`
               }
             >
               <span className="tabular text-xs leading-none">{dayNumber}</span>
-              {total && (
+              {total ? (
                 <span className="tabular mt-0.5 text-[10px] leading-none">{total.drinks}</span>
-              )}
+              ) : rested ? (
+                <span className="mt-0.5 text-[10px] leading-none">🌙</span>
+              ) : null}
             </div>
           );
         })}
@@ -93,7 +101,11 @@ export default function CalendarGrid({
       <div className="mt-3 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[10px] font-bold text-muted">
         <span className="flex items-center gap-1">
           <span className="h-3 w-3 rounded border-[2px] border-ink bg-cream" />
-          飲酒なし
+          記録なし
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="h-3 w-3 rounded border-[2px] border-ink bg-mint" />
+          休肝日
         </span>
         <span className="flex items-center gap-1">
           <span className="h-3 w-3 rounded border-[2px] border-ink bg-beer/40" />〜

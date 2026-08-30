@@ -47,6 +47,28 @@ export interface UserProfile {
   sex: Sex;
   goal: UserGoal;
   settings: UserSettings;
+  /**
+   * 「種類:サイズ」ごとに記録した杯数の累計。よく飲むお酒をワンタップで記録するために持つ。
+   *
+   * 率ではなく生のカウントを貯める。プロフィールは元々読んでいるので、
+   * この方式なら**追加の読み取りなし**で「よく飲む3種」を出せる。
+   * 後から足した項目なので、持っていない既存ユーザーは undefined。
+   */
+  drinkCounts?: Record<string, number>;
+}
+
+/**
+ * 「その日は飲まなかった」ことの記録。
+ *
+ * 記録が無い日は「飲まなかった日」ではなく「開かなかった日」かもしれない。
+ * 休肝日を推定ではなく事実として扱うために、明示的に残す。
+ *
+ * users/{uid}/restDays/{飲酒日キー} に置く。ドキュメントIDが日付そのものなので、
+ * 同じ日を二重に登録できない。
+ */
+export interface RestDay {
+  dayKey: string;
+  recordedAt: Timestamp;
 }
 
 export type SessionStatus = "active" | "finished";

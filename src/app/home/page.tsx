@@ -1,9 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Plus, Trash2 } from "lucide-react";
+import { Timestamp } from "firebase/firestore";
+import { CalendarClock, Moon, Plus, Trash2 } from "lucide-react";
 import BottomNav from "../components/BottomNav";
 import DrinkLogModal from "../components/DrinkLogModal";
+import QuickDrinkBar from "../components/QuickDrinkBar";
 import SessionPlanModal from "../components/SessionPlanModal";
 import PacePlanCard from "../components/PacePlanCard";
 import AlcoholTimer from "../components/AlcoholTimer";
@@ -13,26 +15,39 @@ import { useCurrentUser } from "../lib/useCurrentUser";
 import {
   addDrinkRecord,
   autoCloseIfStale,
+  bumpDrinkCount,
   fetchActiveSession,
   fetchRecentSessions,
   fetchRecords,
   fetchSession,
   finishSession,
   incrementWaterCount,
+  isRestDay,
+  markRestDay,
   removeDrinkRecord,
   startSession,
+  unmarkRestDay,
 } from "../lib/firestoreUtils";
 import type { DrinkRecord, DrinkingSession, SessionPlan } from "../lib/types/firestore";
 import { evaluateWarnings } from "../lib/warnings";
 import { personalPaceFromSessions, weekdayOf } from "../lib/stats";
 import { buildPersonalBaseline, personalInsights } from "../lib/personalization";
 import { useDrinkingNotifications } from "../lib/useNotifications";
+import {
+  quickDrinkFromRecord,
+  topQuickDrinks,
+  type QuickDrink,
+} from "../lib/quickDrinks";
 import { DEFAULT_DAY_START_HOUR, DEFAULT_GOAL_ALCOHOL_G } from "../lib/constants";
+import { toDrinkingDay } from "../lib/drinkingDay";
 import { formatDuration, formatGrams, formatInt, formatTime } from "../lib/format";
 import { findDrinkType } from "../lib/drinks";
 
 /** 個人のペースと傾向を出すために読む、直近のセッション数 */
 const PERSONAL_SAMPLE_SESSIONS = 30;
+
+/** ワンタップ記録に並べる「よく飲むもの」の数 */
+const QUICK_DRINK_COUNT = 3;
 
 export default function HomePage() {
   const { user, profile, loading } = useCurrentUser();
@@ -46,8 +61,11 @@ export default function HomePage() {
   const [now, setNow] = useState(() => Date.now());
   /** 過去の飲酒。ペースの基準と、その人だけの気づきの両方に使う */
   const [pastSessions, setPastSessions] = useState<DrinkingSession[]>([]);
+  /** 今日を「飲まなかった日」として記録済みか。判定前は null */
+  const [restDayMarked, setRestDayMarked] = useState<boolean | null>(null);
 
   const dayStartHour = profile?.settings.dayStartHour ?? DEFAULT_DAY_START_HOUR;
+  const todayKey = toDrinkingDay(new Date(now), dayStartHour);
   const profileGoal = profile?.goal.alcoholGrams ?? null;
   // 計画を立てた回は、その日の上限がセッションに入っている
   const goalAlcoholG = session?.goalAlcoholG ?? profileGoal;
@@ -98,6 +116,14 @@ export default function HomePage() {
       });
   }, [loading, user]);
 
+  // 今日を休肝日として記録済みかを見る
+  useEffect(() => {
+    if (loading || !user) return;
+    void isRestDay(user.uid, todayKey)
+      .then(setRestDayMarked)
+      .catch(() => setRestDayMarked(false));
+  }, [loading, user, todayKey]);
+
   /** 終わった回だけを基準にする。進行中の回は合計が途中なので混ぜない */
   const finishedSessions = useMemo(
     () => pastSessions.filter((s) => s.status === "finished"),
@@ -112,6 +138,27 @@ export default function HomePage() {
   const timerDrinks = useMemo(
     () => records.map((r) => ({ alcoholG: r.alcoholG, drankAtMs: r.drankAt.toMillis() })),
     [records],
+  );
+
+  /** 直前の1杯。「もう1杯」で同じものをすぐ足せるようにする */
+  const lastDrink = useMemo(
+    () => (records.length > 0 ? quickDrinkFromRecord(records[records.length - 1]) : null),
+    [records],
+  );
+
+  /**
+   * よく飲むもの。直前の1杯と重複させない。
+   * drinkCounts はプロフィールと一緒に開いたときだけ読むので、
+   * 今日ぶんの増加は次に開いたときから反映される。
+   */
+  const frequentDrinks = useMemo(
+    () =>
+      topQuickDrinks(
+        profile?.drinkCounts,
+        QUICK_DRINK_COUNT,
+        lastDrink?.countKey ? [lastDrink.countKey] : [],
+      ),
+    [profile?.drinkCounts, lastDrink],
   );
 
   const warnings = useMemo(() => {
@@ -155,13 +202,64 @@ export default function HomePage() {
     await reload();
   }
 
-  async function handleSubmitRecord(record: Omit<DrinkRecord, "id">) {
+  /**
+   * 1杯記録する。モーダルからもワンタップからもここを通す。
+   *
+   * countKey は「よく飲むもの」を出すための回数。記録本体とは切り離してあり、
+   * 失敗しても無視する（bumpDrinkCount の中で握りつぶしている）。
+   */
+  async function recordDrink(record: Omit<DrinkRecord, "id">, countKey: string | null) {
     if (!user) return;
     // 計画を立てずに1杯目から記録した場合は、ここでセッションを作る
     const target = session ?? (await startSession(user.uid, dayStartHour, profileGoal));
     await addDrinkRecord(user.uid, target.id, record);
-    setModalOpen(false);
+    if (countKey) void bumpDrinkCount(user.uid, countKey, record.quantity);
     await reload();
+  }
+
+  async function handleSubmitRecord(
+    record: Omit<DrinkRecord, "id">,
+    countKey: string | null,
+  ) {
+    await recordDrink(record, countKey);
+    setModalOpen(false);
+  }
+
+  async function handleQuickRecord(drink: QuickDrink) {
+    try {
+      await recordDrink(
+        {
+          drinkTypeId: drink.drinkTypeId,
+          drinkLabel: drink.label,
+          sizeLabel: drink.sizeLabel,
+          volumeMl: drink.volumeMl,
+          abvPercent: drink.abvPercent,
+          quantity: 1,
+          alcoholG: drink.alcoholG,
+          calories: drink.calories,
+          cost: null,
+          drankAt: Timestamp.now(),
+        },
+        drink.countKey,
+      );
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "記録に失敗しました。");
+    }
+  }
+
+  async function handleToggleRestDay() {
+    if (!user) return;
+    try {
+      if (restDayMarked) {
+        await unmarkRestDay(user.uid, todayKey);
+        setRestDayMarked(false);
+      } else {
+        await markRestDay(user.uid, todayKey);
+        setRestDayMarked(true);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "記録に失敗しました。");
+    }
   }
 
   async function handleRemoveLast() {
@@ -279,15 +377,32 @@ export default function HomePage() {
         )}
       </section>
 
-      {/* 飲み始める前に計画を立てられるのは、まだ始まっていないときだけ */}
+      {/* 飲み始める前に計画を立てたり、休肝日にしたりできるのは、まだ始まっていないときだけ */}
       {!session && (
-        <button
-          onClick={() => setPlanModalOpen(true)}
-          className="sticker-press mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-paper px-4 py-4 font-extrabold text-ink"
-        >
-          <CalendarClock className="h-5 w-5" strokeWidth={3} />
-          今日は飲み会？　先に計画を立てる
-        </button>
+        <div className="mb-4 space-y-2">
+          <button
+            onClick={() => setPlanModalOpen(true)}
+            className="sticker-press flex w-full items-center justify-center gap-2 rounded-2xl bg-paper px-4 py-4 font-extrabold text-ink"
+          >
+            <CalendarClock className="h-5 w-5" strokeWidth={3} />
+            今日は飲み会？　先に計画を立てる
+          </button>
+
+          {/*
+            記録が無い日は「飲まなかった日」ではなく「開かなかった日」かもしれない。
+            休肝日を推定ではなく事実にするために、押して残してもらう。
+          */}
+          <button
+            onClick={handleToggleRestDay}
+            disabled={restDayMarked === null}
+            className={`sticker-press flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 font-extrabold text-ink disabled:opacity-50 ${
+              restDayMarked ? "bg-mint" : "bg-paper"
+            }`}
+          >
+            <Moon className="h-5 w-5" strokeWidth={3} />
+            {restDayMarked ? "今日は休肝日にしました（取り消す）" : "今日は飲まなかった"}
+          </button>
+        </div>
       )}
 
       {session && todayIsPlanned && (
@@ -333,12 +448,18 @@ export default function HomePage() {
         </div>
       )}
 
+      <QuickDrinkBar
+        lastDrink={lastDrink}
+        frequent={frequentDrinks}
+        onRecord={handleQuickRecord}
+      />
+
       <button
         onClick={() => setModalOpen(true)}
         className="sticker-press mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-beer px-4 py-5 text-xl font-extrabold text-ink"
       >
         <Plus className="h-6 w-6" strokeWidth={3} />
-        お酒を記録
+        {lastDrink || frequentDrinks.length > 0 ? "ほかのお酒を記録" : "お酒を記録"}
       </button>
 
       {records.length > 0 && (

@@ -54,25 +54,26 @@ export function goalStreaks(sessions: DrinkingSession[]): {
   return { current: running, best };
 }
 
-/** 飲酒日と飲酒日のあいだで、いちばん長く空いた日数（休肝日の最長連続） */
-export function longestRestDays(sessions: DrinkingSession[], today?: string): number {
-  const days = Array.from(new Set(sessions.map((s) => s.drinkingDay))).sort();
+/**
+ * 明示的に記録された休肝日のうち、いちばん長く続いた日数。
+ *
+ * **記録が無い日を休肝日として数えない。** それは「飲まなかった日」ではなく
+ * 「アプリを開かなかった日」かもしれないため。
+ * 称号は、実際に押して残した事実に対してだけ付ける。
+ */
+export function longestRestStreak(restDayKeys: string[]): number {
+  const days = Array.from(new Set(restDayKeys)).sort();
   if (days.length === 0) return 0;
 
   const toTime = (dayKey: string) => drinkingDayRange(dayKey, 0).start.getTime();
   const dayMs = 24 * 60 * 60 * 1000;
 
-  let longest = 0;
+  let longest = 1;
+  let running = 1;
   for (let i = 1; i < days.length; i += 1) {
-    const gap = Math.round((toTime(days[i]) - toTime(days[i - 1])) / dayMs) - 1;
-    longest = Math.max(longest, gap);
-  }
-
-  // 最後に飲んだ日から今日までも「空いている日数」として数える。
-  // 今日はまだ終わっていないので数に入れない（飲酒日どうしの数え方と揃える）
-  if (today) {
-    const gap = Math.round((toTime(today) - toTime(days[days.length - 1])) / dayMs) - 1;
-    longest = Math.max(longest, gap);
+    const gap = Math.round((toTime(days[i]) - toTime(days[i - 1])) / dayMs);
+    running = gap === 1 ? running + 1 : 1;
+    longest = Math.max(longest, running);
   }
   return longest;
 }
@@ -84,13 +85,14 @@ export function countSessionsWithWater(sessions: DrinkingSession[]): number {
 
 export function evaluateAchievements(
   sessions: DrinkingSession[],
-  today?: string,
+  restDayKeys: string[] = [],
 ): Achievement[] {
   const recorded = sessions.length;
   const goalAchieved = countGoalAchieved(sessions);
   const streak = goalStreaks(sessions);
   const water = countSessionsWithWater(sessions);
-  const rest = longestRestDays(sessions, today);
+  const restStreak = longestRestStreak(restDayKeys);
+  const restTotal = new Set(restDayKeys).size;
 
   const definitions: Omit<Achievement, "achieved">[] = [
     {
@@ -142,11 +144,19 @@ export function evaluateAchievements(
       target: 10,
     },
     {
-      id: "rest-7",
+      id: "rest-10",
       emoji: "🌙",
+      title: "休肝日のある暮らし",
+      description: "「今日は飲まなかった」を10日記録した",
+      progress: restTotal,
+      target: 10,
+    },
+    {
+      id: "rest-7",
+      emoji: "🌛",
       title: "休肝ウィーク",
-      description: "7日続けてお酒を飲まない期間をつくった",
-      progress: rest,
+      description: "7日続けて「飲まなかった」を記録した",
+      progress: restStreak,
       target: 7,
     },
     {
