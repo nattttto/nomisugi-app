@@ -1,55 +1,89 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import BottomNav from "../components/BottomNav";
+import SessionHistoryList from "../components/SessionHistoryList";
+import MonthlyStats from "../components/MonthlyStats";
+import YearlyStats from "../components/YearlyStats";
+import PatternStats from "../components/PatternStats";
+import AchievementList from "../components/AchievementList";
 import { useCurrentUser } from "../lib/useCurrentUser";
-import { fetchRecentSessions, fetchRecords } from "../lib/firestoreUtils";
-import type { DrinkRecord, DrinkingSession } from "../lib/types/firestore";
-import { formatDayLabel } from "../lib/drinkingDay";
-import { formatDuration, formatGrams, formatInt, formatTime, formatYen } from "../lib/format";
-import { findDrinkType } from "../lib/drinks";
+import { fetchRecentSessions, fetchSessionsBetween } from "../lib/firestoreUtils";
+import { monthKeyOf, previousMonthKey } from "../lib/stats";
+import { riskAlcoholG } from "../lib/warnings";
+import { DEFAULT_DAY_START_HOUR } from "../lib/constants";
+import type { DrinkingSession } from "../lib/types/firestore";
 
-const PAGE_SIZE = 30;
+type Tab = "history" | "monthly" | "yearly" | "pattern";
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: "history", label: "履歴" },
+  { id: "monthly", label: "月間" },
+  { id: "yearly", label: "年間" },
+  { id: "pattern", label: "傾向" },
+];
+
+/** 履歴タブで一度に出す件数 */
+const HISTORY_PAGE_SIZE = 30;
+
+/**
+ * 傾向と称号は「これまで全部」を見る必要がある。
+ * 個人利用の想定なので上限を決め打ちで置いておく。
+ */
+const PATTERN_MAX_SESSIONS = 500;
 
 export default function HistoryPage() {
-  const { user, loading } = useCurrentUser();
-  const [sessions, setSessions] = useState<DrinkingSession[]>([]);
-  const [loadingSessions, setLoadingSessions] = useState(true);
-  const [openId, setOpenId] = useState<string | null>(null);
-  // 開いたセッションの内訳だけを読む。全部まとめて読むと無駄な通信になる
-  const [recordsBySession, setRecordsBySession] = useState<Record<string, DrinkRecord[]>>({});
+  const { user, profile, loading } = useCurrentUser();
+  const [tab, setTab] = useState<Tab>("history");
+
+  const [recent, setRecent] = useState<DrinkingSession[] | null>(null);
+  // 月キーごとに「その月＋前月」をまとめて持つ
+  const [monthCache, setMonthCache] = useState<Record<string, DrinkingSession[]>>({});
+  const [yearCache, setYearCache] = useState<Record<number, DrinkingSession[]>>({});
+  const [allSessions, setAllSessions] = useState<DrinkingSession[] | null>(null);
+
+  const [monthKey, setMonthKey] = useState(() => monthKeyOf(new Date()));
+  const [year, setYear] = useState(() => new Date().getFullYear());
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const dayStartHour = profile?.settings.dayStartHour ?? DEFAULT_DAY_START_HOUR;
 
   const load = useCallback(async () => {
     if (!user) return;
-    setLoadingSessions(true);
+    setError(null);
+    setBusy(true);
     try {
-      setSessions(await fetchRecentSessions(user.uid, PAGE_SIZE));
+      if (tab === "history" && recent === null) {
+        setRecent(await fetchRecentSessions(user.uid, HISTORY_PAGE_SIZE));
+      }
+      if (tab === "monthly" && !monthCache[monthKey]) {
+        // 前月比を出すため、前月のはじめから当月の終わりまでをまとめて取る
+        const from = `${previousMonthKey(monthKey)}-01`;
+        const to = `${monthKey}-31`;
+        const sessions = await fetchSessionsBetween(user.uid, from, to);
+        setMonthCache((prev) => ({ ...prev, [monthKey]: sessions }));
+      }
+      if (tab === "yearly" && !yearCache[year]) {
+        const sessions = await fetchSessionsBetween(user.uid, `${year}-01-01`, `${year}-12-31`);
+        setYearCache((prev) => ({ ...prev, [year]: sessions }));
+      }
+      if (tab === "pattern" && allSessions === null) {
+        setAllSessions(await fetchRecentSessions(user.uid, PATTERN_MAX_SESSIONS));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込みに失敗しました。");
     } finally {
-      setLoadingSessions(false);
+      setBusy(false);
     }
-  }, [user]);
+  }, [user, tab, recent, monthCache, monthKey, yearCache, year, allSessions]);
 
   useEffect(() => {
     if (!loading && user) void load();
   }, [loading, user, load]);
 
-  async function toggle(session: DrinkingSession) {
-    if (openId === session.id) {
-      setOpenId(null);
-      return;
-    }
-    setOpenId(session.id);
-    if (!recordsBySession[session.id] && user) {
-      const records = await fetchRecords(user.uid, session.id);
-      setRecordsBySession((prev) => ({ ...prev, [session.id]: records }));
-    }
-  }
-
-  if (loading || loadingSessions) {
+  if (loading) {
     return (
       <main className="flex min-h-dvh items-center justify-center text-slate-400">
         読み込み中...
@@ -57,141 +91,96 @@ export default function HistoryPage() {
     );
   }
 
+  const risk = riskAlcoholG(profile?.sex ?? "unspecified");
+  const monthSessions = monthCache[monthKey];
+  const yearSessions = yearCache[year];
+  const currentMonthKey = monthKeyOf(new Date());
+
+  function shiftMonth(delta: number) {
+    const [y, m] = monthKey.split("-").map(Number);
+    const date = new Date(y, m - 1 + delta, 1);
+    setMonthKey(monthKeyOf(date));
+  }
+
   return (
     <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-8">
-      <h1 className="mb-6 text-2xl font-bold">📊 振り返る</h1>
+      <h1 className="mb-4 text-2xl font-bold">📊 振り返る</h1>
+
+      <div className="mb-5 flex gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1">
+        {TABS.map((option) => (
+          <button
+            key={option.id}
+            onClick={() => setTab(option.id)}
+            className={`flex-1 rounded-lg px-2 py-2 text-sm ${
+              tab === option.id ? "bg-amber-500 font-bold text-slate-950" : "text-slate-400"
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
 
       {error && (
         <p className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
       )}
 
-      {sessions.length === 0 ? (
-        <p className="py-16 text-center text-slate-400">まだ記録がありません。</p>
-      ) : (
-        <ul className="space-y-3">
-          {sessions.map((session) => {
-            const open = openId === session.id;
-            const endAt = session.endAt?.toDate() ?? null;
-            const durationMs = endAt
-              ? endAt.getTime() - session.startAt.toMillis()
-              : null;
-            const records = recordsBySession[session.id];
+      {tab === "history" &&
+        (recent === null ? (
+          <p className="py-16 text-center text-slate-400">読み込み中...</p>
+        ) : (
+          <SessionHistoryList uid={user!.uid} sessions={recent} />
+        ))}
 
-            return (
-              <li
-                key={session.id}
-                className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900/60"
-              >
-                <button
-                  onClick={() => toggle(session)}
-                  className="flex w-full items-center justify-between px-5 py-4 text-left"
-                >
-                  <div>
-                    <p className="font-bold">{formatDayLabel(session.drinkingDay)}</p>
-                    <p className="tabular mt-1 text-sm text-slate-400">
-                      🍺 {session.totalDrinks} 杯 / {formatGrams(session.totalAlcoholG)}g /{" "}
-                      {formatInt(session.totalCalories)} kcal
-                    </p>
-                  </div>
-                  {open ? (
-                    <ChevronDown className="h-5 w-5 shrink-0 text-slate-500" />
-                  ) : (
-                    <ChevronRight className="h-5 w-5 shrink-0 text-slate-500" />
-                  )}
-                </button>
-
-                {open && (
-                  <div className="border-t border-slate-800 px-5 py-4">
-                    <dl className="mb-4 grid grid-cols-2 gap-3 text-sm">
-                      <div>
-                        <dt className="text-xs text-slate-500">飲酒時間</dt>
-                        <dd className="tabular">
-                          {formatTime(session.startAt.toDate())}
-                          {endAt ? ` 〜 ${formatTime(endAt)}` : " 〜 （記録中）"}
-                        </dd>
-                      </div>
-                      {durationMs !== null && (
-                        <div>
-                          <dt className="text-xs text-slate-500">合計</dt>
-                          <dd className="tabular">{formatDuration(durationMs)}</dd>
-                        </div>
-                      )}
-                      {session.waterCount > 0 && (
-                        <div>
-                          <dt className="text-xs text-slate-500">水</dt>
-                          <dd className="tabular">💧 {session.waterCount} 杯</dd>
-                        </div>
-                      )}
-                      {session.totalCost > 0 && (
-                        <div>
-                          <dt className="text-xs text-slate-500">金額</dt>
-                          <dd className="tabular">{formatYen(session.totalCost)}</dd>
-                        </div>
-                      )}
-                      {session.goalAlcoholG !== null && (
-                        <div>
-                          <dt className="text-xs text-slate-500">目標</dt>
-                          <dd
-                            className={
-                              session.totalAlcoholG <= session.goalAlcoholG
-                                ? "text-emerald-300"
-                                : "text-red-300"
-                            }
-                          >
-                            {session.goalAlcoholG}g /{" "}
-                            {session.totalAlcoholG <= session.goalAlcoholG ? "達成" : "超過"}
-                          </dd>
-                        </div>
-                      )}
-                      {session.closedBy === "auto" && (
-                        <div className="col-span-2">
-                          <dd className="text-xs text-slate-500">
-                            終了の操作が無かったため、最後の記録の時刻で自動的に終了しています。
-                          </dd>
-                        </div>
-                      )}
-                    </dl>
-
-                    {records === undefined ? (
-                      <p className="text-sm text-slate-500">内訳を読み込み中...</p>
-                    ) : (
-                      <ul className="space-y-2">
-                        {records.map((record) => (
-                          <li
-                            key={record.id}
-                            className="flex items-center justify-between text-sm"
-                          >
-                            <span className="flex items-center gap-2">
-                              <span>{findDrinkType(record.drinkTypeId)?.emoji ?? "🍹"}</span>
-                              <span>
-                                {record.drinkLabel}
-                                <span className="ml-1 text-xs text-slate-500">
-                                  {record.sizeLabel}
-                                </span>
-                                {record.quantity > 1 && (
-                                  <span className="ml-1 text-amber-400">×{record.quantity}</span>
-                                )}
-                              </span>
-                            </span>
-                            <span className="tabular text-xs text-slate-400">
-                              {formatTime(record.drankAt.toDate())} /{" "}
-                              {formatGrams(record.alcoholG)}g
-                            </span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      {tab === "monthly" && (
+        <>
+          <div className="mb-4 flex items-center justify-center gap-4">
+            <button
+              onClick={() => shiftMonth(-1)}
+              aria-label="前の月"
+              className="rounded-lg border border-slate-700 p-2 text-slate-300"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <span className="tabular text-sm">{monthKey}</span>
+            <button
+              onClick={() => shiftMonth(1)}
+              disabled={monthKey >= currentMonthKey}
+              aria-label="次の月"
+              className="rounded-lg border border-slate-700 p-2 text-slate-300 disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+          {monthSessions === undefined ? (
+            <p className="py-16 text-center text-slate-400">読み込み中...</p>
+          ) : (
+            <MonthlyStats
+              sessions={monthSessions}
+              monthKey={monthKey}
+              riskAlcoholG={risk}
+            />
+          )}
+        </>
       )}
 
-      <p className="mt-6 text-center text-xs text-slate-500">
-        月間・年間の統計とグラフは Phase 2 で追加します。
-      </p>
+      {tab === "yearly" &&
+        (yearSessions === undefined ? (
+          <p className="py-16 text-center text-slate-400">読み込み中...</p>
+        ) : (
+          <YearlyStats sessions={yearSessions} year={year} onChangeYear={setYear} />
+        ))}
+
+      {tab === "pattern" &&
+        (allSessions === null ? (
+          <p className="py-16 text-center text-slate-400">読み込み中...</p>
+        ) : (
+          <div className="space-y-4">
+            <PatternStats sessions={allSessions} dayStartHour={dayStartHour} />
+            <AchievementList sessions={allSessions} dayStartHour={dayStartHour} />
+          </div>
+        ))}
+
+      {busy && <p className="mt-4 text-center text-xs text-slate-500">読み込み中...</p>}
 
       <BottomNav />
     </main>

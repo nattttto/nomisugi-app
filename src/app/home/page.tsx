@@ -12,6 +12,7 @@ import {
   addDrinkRecord,
   autoCloseIfStale,
   fetchActiveSession,
+  fetchRecentSessions,
   fetchRecords,
   fetchSession,
   finishSession,
@@ -21,9 +22,13 @@ import {
 } from "../lib/firestoreUtils";
 import type { DrinkRecord, DrinkingSession } from "../lib/types/firestore";
 import { evaluateWarnings } from "../lib/warnings";
+import { personalPaceFromSessions } from "../lib/stats";
 import { DEFAULT_DAY_START_HOUR } from "../lib/constants";
 import { formatDuration, formatGrams, formatInt, formatTime } from "../lib/format";
 import { findDrinkType } from "../lib/drinks";
+
+/** 個人のペースを出すために読む、直近のセッション数 */
+const PACE_SAMPLE_SESSIONS = 20;
 
 export default function HomePage() {
   const { user, profile, loading } = useCurrentUser();
@@ -34,6 +39,11 @@ export default function HomePage() {
   const [summarySession, setSummarySession] = useState<DrinkingSession | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
+  // 過去の飲酒から出した個人のペース。ペース警告の基準に使う
+  const [pace, setPace] = useState<{ minutesPerDrink: number | null; sampleSize: number }>({
+    minutesPerDrink: null,
+    sampleSize: 0,
+  });
 
   const dayStartHour = profile?.settings.dayStartHour ?? DEFAULT_DAY_START_HOUR;
   const goalAlcoholG = profile?.goal.alcoholGrams ?? null;
@@ -74,6 +84,16 @@ export default function HomePage() {
     if (!loading && user) void reload();
   }, [loading, user, reload]);
 
+  // 個人のペースは1杯記録するたびに変わるものではないので、開いたときに1回だけ読む
+  useEffect(() => {
+    if (loading || !user) return;
+    void fetchRecentSessions(user.uid, PACE_SAMPLE_SESSIONS)
+      .then((sessions) => setPace(personalPaceFromSessions(sessions)))
+      .catch(() => {
+        // 過去データが読めなくても、一般的な目安で警告は出せる
+      });
+  }, [loading, user]);
+
   const timerDrinks = useMemo(
     () => records.map((r) => ({ alcoholG: r.alcoholG, drankAtMs: r.drankAt.toMillis() })),
     [records],
@@ -93,11 +113,10 @@ export default function HomePage() {
       nowMs: now,
       goalAlcoholG,
       sex: profile.sex,
-      // 過去のデータからの個人平均は Phase 2 で入れる。それまでは一般的な目安で判定する
-      personalMinutesPerDrink: null,
-      personalSampleSize: 0,
+      personalMinutesPerDrink: pace.minutesPerDrink,
+      personalSampleSize: pace.sampleSize,
     });
-  }, [session, profile, records, now, goalAlcoholG]);
+  }, [session, profile, records, now, goalAlcoholG, pace]);
 
   async function handleSubmitRecord(record: Omit<DrinkRecord, "id">) {
     if (!user) return;
