@@ -1,0 +1,28 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ユーザーIDの一意性を保証するためのコレクション。
+    // ログイン前にも参照できる必要があるため未認証でも読めるが、
+    // メールアドレスなど個人を特定できる情報は保存しない。
+    match /usernames/{usernameId} {
+      allow read: if true;
+      allow create: if request.auth != null
+                    && request.resource.data.uid == request.auth.uid;
+      // IDは変更・削除できない（他人のIDを奪えてしまうため）
+      allow update, delete: if false;
+    }
+
+    // 飲酒データは本人だけが読み書きできる。
+    // sessions / records はすべて users/{uid} の下にあるので、
+    // ワイルドカード1つで配下すべてを同じ条件で守れる。
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /{document=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}

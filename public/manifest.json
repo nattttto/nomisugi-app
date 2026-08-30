@@ -1,0 +1,10 @@
+{
+  "name": "NOMISUGI",
+  "short_name": "NOMISUGI",
+  "description": "自分の飲み方を知るための飲酒管理アプリ",
+  "start_url": "/home",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#0b1220",
+  "icons": []
+}
