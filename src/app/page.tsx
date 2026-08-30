@@ -16,7 +16,7 @@ export default function RootPage() {
   }, [router]);
 
   return (
-    <main className="flex min-h-dvh items-center justify-center text-slate-400">
+    <main className="flex min-h-dvh items-center justify-center font-bold text-muted">
       読み込み中...
     </main>
   );

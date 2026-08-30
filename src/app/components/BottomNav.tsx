@@ -14,19 +14,19 @@ export default function BottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-800 bg-slate-950/95 pb-[env(safe-area-inset-bottom)] backdrop-blur">
-      <div className="mx-auto flex max-w-md">
+    <nav className="fixed inset-x-0 bottom-0 z-30 border-t-[3px] border-ink bg-paper pb-[env(safe-area-inset-bottom)]">
+      <div className="mx-auto flex max-w-md gap-1 p-2">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = pathname === href;
           return (
             <Link
               key={href}
               href={href}
-              className={`flex flex-1 flex-col items-center gap-1 py-3 text-xs ${
-                active ? "text-amber-400" : "text-slate-500"
+              className={`flex flex-1 flex-col items-center gap-0.5 rounded-xl py-2 text-xs font-extrabold ${
+                active ? "bg-beer text-ink shadow-sticker" : "text-muted"
               }`}
             >
-              <Icon className="h-5 w-5" />
+              <Icon className="h-5 w-5" strokeWidth={2.5} />
               {label}
             </Link>
           );

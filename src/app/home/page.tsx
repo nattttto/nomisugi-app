@@ -157,7 +157,7 @@ export default function HomePage() {
 
   if (loading || loadingSession) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-slate-400">
+      <main className="flex min-h-dvh items-center justify-center font-bold text-muted">
         読み込み中...
       </main>
     );
@@ -167,66 +167,73 @@ export default function HomePage() {
   const goalRest = goalAlcoholG !== null && session ? goalAlcoholG - session.totalAlcoholG : null;
   const goalRatio =
     goalAlcoholG && session ? Math.min(1, session.totalAlcoholG / goalAlcoholG) : 0;
+  const overGoal = goalRest !== null && goalRest < 0;
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-8">
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold tracking-widest text-amber-400">🍺 NOMISUGI</h1>
-        <p className="mt-1 text-sm text-slate-400">
-          こんにちは、{profile?.displayName ?? user?.displayName ?? "ゲスト"}
+    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-32 pt-8">
+      <header className="mb-6 flex items-center justify-between gap-3">
+        <span className="inline-block -rotate-2 rounded-xl bg-beer px-3 py-1.5 text-lg font-extrabold tracking-wider text-ink shadow-pop">
+          🍺 NOMISUGI
+        </span>
+        <p className="truncate text-sm font-extrabold text-muted">
+          {profile?.displayName ?? user?.displayName ?? "ゲスト"} さん
         </p>
       </header>
 
       {error && (
-        <p className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+        <p className="mb-4 rounded-xl bg-berry px-3 py-2 text-sm font-bold text-ink shadow-sticker">
+          {error}
+        </p>
       )}
 
-      <section className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-4 text-sm text-slate-400">今日の飲酒</h2>
+      <section className="sticker-card mb-4 p-5">
+        <h2 className="mb-4 text-sm font-extrabold text-muted">今日の飲酒</h2>
         {session ? (
           <>
             <div className="grid grid-cols-3 gap-2 text-center">
               <div>
-                <p className="tabular text-3xl font-bold">{session.totalDrinks}</p>
-                <p className="text-xs text-slate-500">杯</p>
+                <p className="tabular text-4xl font-extrabold">{session.totalDrinks}</p>
+                <p className="mt-0.5 text-xs font-bold text-muted">杯</p>
               </div>
               <div>
-                <p className="tabular text-3xl font-bold text-amber-400">
+                <p className="tabular text-4xl font-extrabold text-beer-deep">
                   {formatGrams(session.totalAlcoholG)}
                 </p>
-                <p className="text-xs text-slate-500">純アルコール(g)</p>
+                <p className="mt-0.5 text-xs font-bold text-muted">純アルコール(g)</p>
               </div>
               <div>
-                <p className="tabular text-3xl font-bold">{formatInt(session.totalCalories)}</p>
-                <p className="text-xs text-slate-500">kcal</p>
+                <p className="tabular text-4xl font-extrabold">
+                  {formatInt(session.totalCalories)}
+                </p>
+                <p className="mt-0.5 text-xs font-bold text-muted">kcal</p>
               </div>
             </div>
 
-            <dl className="mt-5 grid grid-cols-2 gap-3 border-t border-slate-800 pt-4 text-sm">
+            <dl className="mt-5 grid grid-cols-2 gap-3 border-t-[3px] border-dotted border-ink/25 pt-4 text-sm font-bold">
               <div>
-                <dt className="text-xs text-slate-500">飲酒開始</dt>
+                <dt className="text-xs text-muted">飲酒開始</dt>
                 <dd className="tabular">{formatTime(session.startAt.toDate())}</dd>
               </div>
               <div>
-                <dt className="text-xs text-slate-500">経過時間</dt>
+                <dt className="text-xs text-muted">経過時間</dt>
                 <dd className="tabular">{formatDuration(elapsedMs)}</dd>
               </div>
               {session.waterCount > 0 && (
                 <div>
-                  <dt className="text-xs text-slate-500">水</dt>
-                  <dd className="tabular">{session.waterCount} 杯</dd>
+                  <dt className="text-xs text-muted">水</dt>
+                  <dd className="tabular">💧 {session.waterCount} 杯</dd>
                 </div>
               )}
               {session.totalCost > 0 && (
                 <div>
-                  <dt className="text-xs text-slate-500">金額</dt>
+                  <dt className="text-xs text-muted">金額</dt>
                   <dd className="tabular">¥{formatInt(session.totalCost)}</dd>
                 </div>
               )}
             </dl>
           </>
         ) : (
-          <p className="py-6 text-center text-slate-400">
+          <p className="py-6 text-center text-sm font-bold leading-relaxed text-muted">
             まだ今日の記録はありません。
             <br />
             1杯目を記録すると飲酒がはじまります。
@@ -235,23 +242,30 @@ export default function HomePage() {
       </section>
 
       {goalAlcoholG !== null && (
-        <section className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-          <div className="mb-2 flex items-baseline justify-between">
-            <h2 className="text-sm text-slate-400">🎯 今日の目標</h2>
-            <span className="tabular text-sm">純アルコール {goalAlcoholG}g 以内</span>
+        <section className="sticker-card mb-4 p-5">
+          <div className="mb-3 flex items-baseline justify-between">
+            <h2 className="text-sm font-extrabold text-muted">🎯 今日の目標</h2>
+            <span className="tabular text-sm font-extrabold">純アルコール {goalAlcoholG}g 以内</span>
           </div>
-          <div className="h-2 w-full overflow-hidden rounded-full bg-slate-800">
+          <div className="h-5 w-full overflow-hidden rounded-full bg-cream shadow-sticker">
             <div
-              className={`h-full rounded-full transition-all ${
-                goalRatio >= 1 ? "bg-red-400" : "bg-amber-400"
-              }`}
+              className={`h-full transition-all ${overGoal ? "bg-berry" : "bg-beer"}`}
               style={{ width: `${Math.round(goalRatio * 100)}%` }}
             />
           </div>
-          <p className="mt-2 text-sm text-slate-300">
-            {goalRest === null || goalRest > 0
-              ? `あと ${formatGrams(Math.max(0, goalRest ?? goalAlcoholG))}g`
-              : `目標を ${formatGrams(-(goalRest ?? 0))}g 超えています`}
+          <p className="mt-3 text-center text-lg font-extrabold">
+            {goalRest === null || goalRest > 0 ? (
+              <>
+                あと{" "}
+                <span className="text-beer-deep">
+                  {formatGrams(Math.max(0, goalRest ?? goalAlcoholG))}g
+                </span>
+              </>
+            ) : (
+              <span className="text-berry-deep">
+                目標を {formatGrams(-(goalRest ?? 0))}g 超えています
+              </span>
+            )}
           </p>
         </section>
       )}
@@ -264,19 +278,19 @@ export default function HomePage() {
 
       <button
         onClick={() => setModalOpen(true)}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-amber-500 px-4 py-5 text-lg font-bold text-slate-950"
+        className="sticker-press mb-4 flex w-full items-center justify-center gap-2 rounded-2xl bg-beer px-4 py-5 text-xl font-extrabold text-ink"
       >
-        <Plus className="h-5 w-5" />
+        <Plus className="h-6 w-6" strokeWidth={3} />
         お酒を記録
       </button>
 
       {records.length > 0 && (
-        <section className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+        <section className="sticker-card mb-4 p-5">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm text-slate-400">今日の内訳</h2>
+            <h2 className="text-sm font-extrabold text-muted">今日の内訳</h2>
             <button
               onClick={handleRemoveLast}
-              className="flex items-center gap-1 text-xs text-slate-500"
+              className="flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-berry-deep"
             >
               <Trash2 className="h-3.5 w-3.5" />
               直前を取り消す
@@ -284,18 +298,23 @@ export default function HomePage() {
           </div>
           <ul className="space-y-2">
             {records.map((record) => (
-              <li key={record.id} className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2">
-                  <span>{findDrinkType(record.drinkTypeId)?.emoji ?? "🍹"}</span>
-                  <span>
+              <li
+                key={record.id}
+                className="flex items-center justify-between gap-2 rounded-xl bg-cream px-3 py-2 text-sm font-bold"
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <span className="text-lg">
+                    {findDrinkType(record.drinkTypeId)?.emoji ?? "🍹"}
+                  </span>
+                  <span className="truncate">
                     {record.drinkLabel}
-                    <span className="ml-1 text-xs text-slate-500">{record.sizeLabel}</span>
+                    <span className="ml-1 text-xs font-bold text-muted">{record.sizeLabel}</span>
                     {record.quantity > 1 && (
-                      <span className="ml-1 text-amber-400">×{record.quantity}</span>
+                      <span className="ml-1 text-beer-deep">×{record.quantity}</span>
                     )}
                   </span>
                 </span>
-                <span className="tabular text-xs text-slate-400">
+                <span className="tabular shrink-0 text-xs text-muted">
                   {formatTime(record.drankAt.toDate())} / {formatGrams(record.alcoholG)}g
                 </span>
               </li>
@@ -317,7 +336,7 @@ export default function HomePage() {
       {session && (
         <button
           onClick={handleFinish}
-          className="w-full rounded-xl border border-slate-700 px-4 py-3 text-slate-300"
+          className="sticker-press w-full rounded-xl bg-paper px-4 py-3 font-extrabold text-ink"
         >
           今日は終了
         </button>

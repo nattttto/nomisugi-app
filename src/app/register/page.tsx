@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { Timestamp } from "firebase/firestore";
-import { Beer, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
 import { saveUserProfile } from "../lib/firestoreUtils";
 import {
@@ -15,10 +15,7 @@ import {
   validatePassword,
   validateUsername,
 } from "../lib/username";
-import {
-  DEFAULT_DAY_START_HOUR,
-  DEFAULT_GOAL_ALCOHOL_G,
-} from "../lib/constants";
+import { DEFAULT_DAY_START_HOUR, DEFAULT_GOAL_ALCOHOL_G } from "../lib/constants";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -74,70 +71,77 @@ export default function RegisterPage() {
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-10">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-5 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <Beer className="mx-auto mb-3 h-10 w-10 text-amber-400" />
-          <h1 className="text-2xl font-bold tracking-widest text-amber-400">アカウント作成</h1>
+        <div className="mb-6 text-center">
+          <span className="inline-block -rotate-2 rounded-2xl bg-beer px-5 py-2.5 text-2xl font-extrabold tracking-wider text-ink shadow-pop">
+            アカウント作成
+          </span>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="sticker-card space-y-4 p-5">
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">ユーザーID（ログイン用）</span>
+            <span className="mb-1.5 block text-sm font-extrabold">
+              ユーザーID（ログイン用）
+            </span>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               autoCapitalize="none"
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-amber-400"
+              className="sticker-field"
               placeholder="ryo_2026"
             />
-            <span className="mt-1 block text-xs text-slate-500">
+            <span className="mt-1.5 block text-xs font-bold text-muted">
               英数字とアンダースコア 3〜20文字。あとから変更できません。
             </span>
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">ニックネーム（表示名）</span>
+            <span className="mb-1.5 block text-sm font-extrabold">
+              ニックネーム（表示名）
+            </span>
             <input
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-amber-400"
+              className="sticker-field"
               placeholder="RYO"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">パスワード</span>
+            <span className="mb-1.5 block text-sm font-extrabold">パスワード</span>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="new-password"
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-amber-400"
+              className="sticker-field"
             />
-            <span className="mt-1 block text-xs text-slate-500">
+            <span className="mt-1.5 block text-xs font-bold text-muted">
               6文字以上。メールアドレスを預からない仕組みのため、忘れた場合の自動再設定はできません。
             </span>
           </label>
 
           {error && (
-            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+            <p className="rounded-xl bg-berry px-3 py-2 text-sm font-bold text-ink shadow-sticker">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-50"
+            className="sticker-press flex w-full items-center justify-center gap-2 rounded-xl bg-beer px-4 py-3 text-lg font-extrabold text-ink disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             登録する
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-6 text-center text-sm font-bold text-muted">
           すでにアカウントをお持ちの方は{" "}
-          <Link href="/login" className="text-amber-400 underline">
+          <Link href="/login" className="text-beer-deep underline">
             ログイン
           </Link>
         </p>

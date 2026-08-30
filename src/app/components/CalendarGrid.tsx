@@ -19,12 +19,15 @@ interface Props {
 
 const WEEKDAY_LABELS = ["月", "火", "水", "木", "金", "土", "日"];
 
-/** 純アルコール量の多さで色を変える。飲まなかった日はマスだけ置く */
+/**
+ * 純アルコール量の多さで色を変える。
+ * 塗りの上の文字はすべて ink（明るい色に白文字だとコントラストが落ちるため）。
+ */
 function toneFor(alcoholG: number, riskG: number): string {
-  if (alcoholG === 0) return "bg-slate-800/40 text-slate-600";
-  if (alcoholG < MODERATE_ALCOHOL_G) return "bg-amber-400/20 text-amber-200";
-  if (alcoholG < riskG) return "bg-amber-400/45 text-amber-100";
-  return "bg-red-400/50 text-red-50";
+  if (alcoholG === 0) return "bg-cream text-faint";
+  if (alcoholG < MODERATE_ALCOHOL_G) return "bg-beer/40 text-ink";
+  if (alcoholG < riskG) return "bg-beer text-ink";
+  return "bg-berry text-ink";
 }
 
 export default function CalendarGrid({
@@ -41,12 +44,12 @@ export default function CalendarGrid({
 
   return (
     <div>
-      <div className="mb-1 grid grid-cols-7 gap-1">
+      <div className="mb-1.5 grid grid-cols-7 gap-1">
         {WEEKDAY_LABELS.map((label, index) => (
           <div
             key={label}
-            className={`text-center text-xs ${
-              index === 5 ? "text-sky-400" : index === 6 ? "text-red-400" : "text-slate-500"
+            className={`text-center text-xs font-extrabold ${
+              index === 5 ? "text-aqua-deep" : index === 6 ? "text-berry-deep" : "text-muted"
             }`}
           >
             {label}
@@ -68,7 +71,7 @@ export default function CalendarGrid({
           return (
             <div
               key={dayKey}
-              className={`flex aspect-square flex-col items-center justify-center rounded ${toneFor(
+              className={`flex aspect-square flex-col items-center justify-center rounded-lg border-[2px] border-ink font-extrabold ${toneFor(
                 alcoholG,
                 riskAlcoholG,
               )}`}
@@ -80,28 +83,27 @@ export default function CalendarGrid({
             >
               <span className="tabular text-xs leading-none">{dayNumber}</span>
               {total && (
-                <span className="tabular mt-0.5 text-[10px] leading-none opacity-80">
-                  {total.drinks}
-                </span>
+                <span className="tabular mt-0.5 text-[10px] leading-none">{total.drinks}</span>
               )}
             </div>
           );
         })}
       </div>
 
-      <div className="mt-3 flex items-center justify-end gap-3 text-[10px] text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-[10px] font-bold text-muted">
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded bg-slate-800/40" />
+          <span className="h-3 w-3 rounded border-[2px] border-ink bg-cream" />
           飲酒なし
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded bg-amber-400/20" />〜{MODERATE_ALCOHOL_G}g
+          <span className="h-3 w-3 rounded border-[2px] border-ink bg-beer/40" />〜
+          {MODERATE_ALCOHOL_G}g
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded bg-amber-400/45" />〜{riskAlcoholG}g
+          <span className="h-3 w-3 rounded border-[2px] border-ink bg-beer" />〜{riskAlcoholG}g
         </span>
         <span className="flex items-center gap-1">
-          <span className="h-3 w-3 rounded bg-red-400/50" />
+          <span className="h-3 w-3 rounded border-[2px] border-ink bg-berry" />
           {riskAlcoholG}g〜
         </span>
       </div>

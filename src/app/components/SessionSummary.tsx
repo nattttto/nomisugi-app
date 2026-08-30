@@ -27,84 +27,82 @@ export default function SessionSummary({ session, weightKg, onClose }: Props) {
   const achieved = goal !== null && session.totalAlcoholG <= goal;
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/70 px-4">
-      <div className="fade-up w-full max-w-sm rounded-2xl border border-slate-800 bg-slate-900 p-6">
-        <div className="mb-5 flex items-start justify-between">
-          <h2 className="text-lg font-bold">🎉 今日の飲酒終了</h2>
-          <button onClick={onClose} aria-label="閉じる" className="text-slate-400">
-            <X className="h-5 w-5" />
+    <div className="fixed inset-0 z-40 flex items-center justify-center bg-ink/50 px-4">
+      <div className="pop-in max-h-[92dvh] w-full max-w-sm overflow-y-auto rounded-3xl border-[3px] border-ink bg-cream p-5">
+        <div className="mb-4 flex items-start justify-between gap-2">
+          <span className="inline-block -rotate-1 rounded-xl bg-beer px-3 py-1.5 text-lg font-extrabold text-ink shadow-sticker">
+            🎉 今日の飲酒終了
+          </span>
+          <button onClick={onClose} aria-label="閉じる" className="mt-1 text-muted">
+            <X className="h-6 w-6" strokeWidth={3} />
           </button>
         </div>
 
-        <dl className="space-y-3 text-sm">
-          <div className="flex justify-between">
-            <dt className="text-slate-400">飲酒時間</dt>
-            <dd className="tabular">
+        <dl className="space-y-2.5 rounded-2xl bg-paper p-4 text-sm font-bold shadow-sticker">
+          <div className="flex justify-between gap-2">
+            <dt className="shrink-0 text-muted">飲酒時間</dt>
+            <dd className="tabular text-right">
               {formatTime(startAt)} 〜 {formatTime(endAt)}（{formatDuration(durationMs)}）
             </dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-slate-400">合計</dt>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">合計</dt>
             <dd className="tabular">🍺 {session.totalDrinks} 杯</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-slate-400">純アルコール</dt>
-            <dd className="tabular text-amber-400">{formatGrams(session.totalAlcoholG)} g</dd>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">純アルコール</dt>
+            <dd className="tabular text-beer-deep">{formatGrams(session.totalAlcoholG)} g</dd>
           </div>
-          <div className="flex justify-between">
-            <dt className="text-slate-400">カロリー</dt>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">カロリー</dt>
             <dd className="tabular">{formatInt(session.totalCalories)} kcal</dd>
           </div>
           {session.waterCount > 0 && (
-            <div className="flex justify-between">
-              <dt className="text-slate-400">水</dt>
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted">水</dt>
               <dd className="tabular">💧 {session.waterCount} 杯</dd>
             </div>
           )}
           {session.totalCost > 0 && (
-            <div className="flex justify-between">
-              <dt className="text-slate-400">金額</dt>
+            <div className="flex justify-between gap-2">
+              <dt className="text-muted">金額</dt>
               <dd className="tabular">{formatYen(session.totalCost)}</dd>
             </div>
           )}
-          <div className="flex justify-between">
-            <dt className="text-slate-400">推定処理終了</dt>
+          <div className="flex justify-between gap-2">
+            <dt className="text-muted">推定処理終了</dt>
             <dd className="tabular">{formatTime(soberAt)} 頃</dd>
           </div>
         </dl>
 
         {goal !== null && (
           <div
-            className={`mt-5 rounded-xl border p-4 text-center ${
-              achieved
-                ? "border-emerald-500/40 bg-emerald-500/10"
-                : "border-slate-700 bg-slate-800/50"
+            className={`mt-4 rounded-2xl p-4 text-center text-ink shadow-sticker ${
+              achieved ? "bg-mint" : "bg-paper"
             }`}
           >
-            <p className="text-xs text-slate-400">🎯 今日の目標</p>
-            <p className="tabular mt-1 text-sm">純アルコール {goal}g 以内</p>
-            <p
-              className={`mt-2 flex items-center justify-center gap-1 font-bold ${
-                achieved ? "text-emerald-300" : "text-slate-300"
-              }`}
-            >
+            <p className="text-xs font-bold">🎯 今日の目標</p>
+            <p className="tabular mt-0.5 text-sm font-bold">純アルコール {goal}g 以内</p>
+            <p className="mt-2 flex items-center justify-center gap-1 text-xl font-extrabold">
               {achieved ? (
                 <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  達成
+                  <CheckCircle2 className="h-5 w-5" strokeWidth={3} />
+                  達成！
                 </>
               ) : (
-                `${formatGrams(session.totalAlcoholG - goal)}g 超過`
+                <span className="text-berry-deep">
+                  {formatGrams(session.totalAlcoholG - goal)}g 超過
+                </span>
               )}
             </p>
           </div>
         )}
 
-        <p className="mt-4 text-xs leading-relaxed text-slate-500">{MEDICAL_DISCLAIMER}</p>
+        <p className="mt-4 text-xs font-bold leading-relaxed text-muted">{MEDICAL_DISCLAIMER}</p>
 
         <button
           onClick={onClose}
-          className="mt-5 w-full rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950"
+          className="sticker-press mt-4 w-full rounded-xl bg-beer px-4 py-3 text-lg font-extrabold text-ink"
         >
           閉じる
         </button>

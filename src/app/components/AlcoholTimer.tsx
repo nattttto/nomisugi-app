@@ -30,45 +30,47 @@ export default function AlcoholTimer({ drinks, weightKg, showWeightHint }: Props
   const soberAt = estimatedSoberAt(drinks, now, weightKg);
 
   return (
-    <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-      <h2 className="mb-4 flex items-center gap-2 text-sm text-slate-400">
-        <Timer className="h-4 w-4" />
+    <section className="sticker-card p-5">
+      <h2 className="mb-4 flex items-center gap-1.5 text-sm font-extrabold text-muted">
+        <Timer className="h-4 w-4" strokeWidth={3} />
         アルコール処理タイマー
       </h2>
 
       {remaining <= 0 ? (
-        <p className="py-4 text-center text-slate-400">
+        <p className="py-4 text-center text-sm font-bold text-muted">
           体内のアルコールは分解し終わったと推定されます。
         </p>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 text-center">
-            <div>
-              <p className="text-xs text-slate-500">残っている推定量</p>
-              <p className="tabular text-2xl font-bold text-amber-400">
+          <p className="tabular rounded-2xl bg-ink py-3 text-center text-4xl font-extrabold tracking-wider text-cream">
+            {soberAt ? formatCountdown(soberAt.getTime() - now) : "00:00:00"}
+          </p>
+
+          <div className="mt-4 grid grid-cols-2 gap-3 text-center">
+            <div className="rounded-xl bg-cream px-2 py-2.5">
+              <p className="text-xs font-bold text-muted">残っている推定量</p>
+              <p className="tabular text-2xl font-extrabold text-beer-deep">
                 {formatGrams(remaining)}
                 <span className="ml-0.5 text-base">g</span>
               </p>
             </div>
-            <div>
-              <p className="text-xs text-slate-500">処理完了の目安</p>
-              <p className="tabular text-2xl font-bold text-amber-400">
+            <div className="rounded-xl bg-cream px-2 py-2.5">
+              <p className="text-xs font-bold text-muted">処理完了の目安</p>
+              <p className="tabular text-2xl font-extrabold text-beer-deep">
                 {soberAt ? formatTime(soberAt) : "--:--"}
               </p>
             </div>
           </div>
-
-          <p className="tabular mt-4 text-center text-4xl font-bold tracking-wider">
-            {soberAt ? formatCountdown(soberAt.getTime() - now) : "00:00:00"}
-          </p>
         </>
       )}
 
-      <p className="mt-4 border-t border-slate-800 pt-3 text-xs leading-relaxed text-slate-500">
+      <p className="mt-4 border-t-[3px] border-dotted border-ink/25 pt-3 text-xs font-bold leading-relaxed text-muted">
         {MEDICAL_DISCLAIMER}
         {showWeightHint && "マイページで体重を設定すると、推定の精度が上がります。"}
       </p>
-      <p className="mt-1 text-xs leading-relaxed text-red-300/80">{DRIVING_DISCLAIMER}</p>
+      <p className="mt-1 text-xs font-bold leading-relaxed text-berry-deep">
+        {DRIVING_DISCLAIMER}
+      </p>
     </section>
   );
 }

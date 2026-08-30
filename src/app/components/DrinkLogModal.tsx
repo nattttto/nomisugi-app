@@ -82,19 +82,22 @@ export default function DrinkLogModal({
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/70 sm:items-center">
-      <div className="fade-up max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-2xl border border-slate-800 bg-slate-900 pb-[env(safe-area-inset-bottom)] sm:rounded-2xl">
-        <header className="sticky top-0 flex items-center justify-between border-b border-slate-800 bg-slate-900 px-4 py-3">
+    <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/50 sm:items-center">
+      <div className="pop-in max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl border-t-[3px] border-ink bg-cream pb-[env(safe-area-inset-bottom)] sm:rounded-3xl sm:border-[3px]">
+        <header className="sticky top-0 z-10 flex items-center justify-between border-b-[3px] border-ink bg-paper px-4 py-3">
           {drink ? (
-            <button onClick={() => setDrink(null)} className="flex items-center text-slate-400">
-              <ChevronLeft className="h-5 w-5" />
+            <button
+              onClick={() => setDrink(null)}
+              className="flex items-center text-sm font-extrabold text-muted"
+            >
+              <ChevronLeft className="h-5 w-5" strokeWidth={3} />
               種類を変える
             </button>
           ) : (
-            <h2 className="font-bold">お酒を記録</h2>
+            <h2 className="text-lg font-extrabold">お酒を記録</h2>
           )}
-          <button onClick={onClose} aria-label="閉じる" className="text-slate-400">
-            <X className="h-5 w-5" />
+          <button onClick={onClose} aria-label="閉じる" className="text-muted">
+            <X className="h-6 w-6" strokeWidth={3} />
           </button>
         </header>
 
@@ -104,62 +107,64 @@ export default function DrinkLogModal({
               <button
                 key={type.id}
                 onClick={() => selectDrink(type)}
-                className="flex flex-col items-center gap-1 rounded-xl border border-slate-700 bg-slate-800/60 px-3 py-5 active:bg-slate-700"
+                className="sticker-press flex flex-col items-center gap-1 rounded-2xl bg-paper px-3 py-5"
               >
-                <span className="text-3xl">{type.emoji}</span>
-                <span className="text-sm">{type.label}</span>
+                <span className="text-4xl">{type.emoji}</span>
+                <span className="text-sm font-extrabold">{type.label}</span>
                 {!type.isCustom && (
-                  <span className="text-xs text-slate-500">約 {type.abvPercent}%</span>
+                  <span className="text-xs font-bold text-muted">約 {type.abvPercent}%</span>
                 )}
               </button>
             ))}
           </div>
         ) : (
-          <div className="space-y-5 p-4">
-            <div className="flex items-center gap-2 text-lg font-bold">
-              <span className="text-2xl">{drink.emoji}</span>
+          <div className="space-y-4 p-4">
+            <div className="flex items-center gap-2 text-xl font-extrabold">
+              <span className="text-3xl">{drink.emoji}</span>
               {drink.label}
             </div>
-            {drink.note && <p className="text-xs text-slate-400">{drink.note}</p>}
+            {drink.note && (
+              <p className="rounded-xl bg-paper px-3 py-2 text-xs font-bold leading-relaxed text-muted shadow-sticker">
+                {drink.note}
+              </p>
+            )}
 
             {drink.isCustom ? (
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-1 block text-sm text-slate-300">量（mL）</span>
+                  <span className="mb-1.5 block text-sm font-extrabold">量（mL）</span>
                   <input
                     inputMode="numeric"
                     value={customVolume}
                     onChange={(e) => setCustomVolume(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+                    className="sticker-field"
                   />
                 </label>
                 <label className="block">
-                  <span className="mb-1 block text-sm text-slate-300">度数（%）</span>
+                  <span className="mb-1.5 block text-sm font-extrabold">度数（%）</span>
                   <input
                     inputMode="decimal"
                     value={customAbv}
                     onChange={(e) => setCustomAbv(e.target.value)}
-                    className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+                    className="sticker-field"
                   />
                 </label>
               </div>
             ) : (
               <div>
-                <span className="mb-2 block text-sm text-slate-300">サイズ</span>
+                <span className="mb-2 block text-sm font-extrabold">サイズ</span>
                 <div className="space-y-2">
                   {drink.sizes.map((option) => (
                     <button
                       key={option.id}
                       onClick={() => setSizeId(option.id)}
-                      className={`flex w-full items-center justify-between rounded-lg border px-4 py-3 text-left ${
-                        option.id === sizeId
-                          ? "border-amber-400 bg-amber-400/10"
-                          : "border-slate-700 bg-slate-950"
+                      className={`flex w-full items-center justify-between gap-2 rounded-xl px-4 py-3 text-left shadow-sticker ${
+                        option.id === sizeId ? "bg-beer" : "bg-paper"
                       }`}
                     >
-                      <span>{option.label}</span>
-                      <span className="text-sm text-slate-400">
-                        {option.volumeMl}mL / 純アルコール{" "}
+                      <span className="font-extrabold">{option.label}</span>
+                      <span className="tabular shrink-0 text-xs font-bold">
+                        {option.volumeMl}mL ／{" "}
                         {formatGrams(pureAlcoholGrams(option.volumeMl, drink.abvPercent))}g
                       </span>
                     </button>
@@ -168,20 +173,20 @@ export default function DrinkLogModal({
               </div>
             )}
 
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-300">数量</span>
+            <div className="flex items-center justify-between rounded-xl bg-paper px-4 py-3 shadow-sticker">
+              <span className="text-sm font-extrabold">数量</span>
               <div className="flex items-center gap-4">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="h-10 w-10 rounded-full border border-slate-700 text-xl"
+                  className="sticker-press h-10 w-10 rounded-full bg-cream text-xl font-extrabold"
                   aria-label="減らす"
                 >
                   −
                 </button>
-                <span className="tabular w-8 text-center text-xl font-bold">{quantity}</span>
+                <span className="tabular w-8 text-center text-2xl font-extrabold">{quantity}</span>
                 <button
                   onClick={() => setQuantity((q) => Math.min(20, q + 1))}
-                  className="h-10 w-10 rounded-full border border-slate-700 text-xl"
+                  className="sticker-press h-10 w-10 rounded-full bg-cream text-xl font-extrabold"
                   aria-label="増やす"
                 >
                   ＋
@@ -190,56 +195,60 @@ export default function DrinkLogModal({
             </div>
 
             <label className="block">
-              <span className="mb-1 block text-sm text-slate-300">金額（任意・円）</span>
+              <span className="mb-1.5 block text-sm font-extrabold">金額（任意・円）</span>
               <input
                 inputMode="numeric"
                 value={costText}
                 onChange={(e) => setCostText(e.target.value)}
                 placeholder="未入力でもOK"
-                className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+                className="sticker-field"
               />
             </label>
 
             {/* 記録すると何がどう増えるかを、押す前に見せる */}
-            <div className="rounded-xl border border-slate-700 bg-slate-950 p-4">
-              <p className="mb-3 text-sm text-slate-400">これを記録すると</p>
+            <div className="rounded-2xl bg-paper p-4 shadow-sticker">
+              <p className="mb-3 text-sm font-extrabold text-muted">これを記録すると</p>
               <dl className="grid grid-cols-3 gap-2 text-center">
                 <div>
-                  <dt className="text-xs text-slate-500">純アルコール</dt>
-                  <dd className="tabular text-lg font-bold text-amber-400">
+                  <dt className="text-xs font-bold text-muted">純アルコール</dt>
+                  <dd className="tabular text-xl font-extrabold text-beer-deep">
                     +{formatGrams(addedAlcohol)}g
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-slate-500">カロリー</dt>
-                  <dd className="tabular text-lg font-bold text-amber-400">
+                  <dt className="text-xs font-bold text-muted">カロリー</dt>
+                  <dd className="tabular text-xl font-extrabold text-beer-deep">
                     +{formatInt(addedCalories)}
                   </dd>
                 </div>
                 <div>
-                  <dt className="text-xs text-slate-500">処理時間</dt>
-                  <dd className="tabular text-lg font-bold text-amber-400">
+                  <dt className="text-xs font-bold text-muted">処理時間</dt>
+                  <dd className="tabular text-xl font-extrabold text-beer-deep">
                     +{formatDuration(addedTimeMs)}
                   </dd>
                 </div>
               </dl>
-              <p className="mt-3 border-t border-slate-800 pt-3 text-xs text-slate-400">
-                今日の合計 {formatGrams(nextTotalAlcohol)}g /{" "}
+              <p className="mt-3 border-t-[3px] border-dotted border-ink/25 pt-3 text-xs font-bold text-muted">
+                今日の合計 {formatGrams(nextTotalAlcohol)}g ／{" "}
                 {formatInt(currentCalories + addedCalories)} kcal
                 {willExceedGoal && (
-                  <span className="ml-1 text-red-300">（目標 {goalAlcoholG}g を超えます）</span>
+                  <span className="ml-1 text-berry-deep">
+                    （目標 {goalAlcoholG}g を超えます）
+                  </span>
                 )}
               </p>
             </div>
 
             {error && (
-              <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+              <p className="rounded-xl bg-berry px-3 py-2 text-sm font-bold text-ink shadow-sticker">
+                {error}
+              </p>
             )}
 
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-50"
+              className="sticker-press flex w-full items-center justify-center gap-2 rounded-xl bg-beer px-4 py-3.5 text-lg font-extrabold text-ink disabled:opacity-50"
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
               記録する

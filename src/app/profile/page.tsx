@@ -113,7 +113,7 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-slate-400">
+      <main className="flex min-h-dvh items-center justify-center font-bold text-muted">
         読み込み中...
       </main>
     );
@@ -124,101 +124,103 @@ export default function ProfilePage() {
   const parsedGoal = toNumberOrNull(goalAlcohol);
 
   return (
-    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-8">
-      <h1 className="mb-6 text-2xl font-bold">👤 マイページ</h1>
+    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-32 pt-8">
+      <h1 className="mb-5">
+        <span className="inline-block -rotate-2 rounded-xl bg-beer px-4 py-2 text-xl font-extrabold text-ink shadow-pop">
+          👤 マイページ
+        </span>
+      </h1>
 
-      <section className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <p className="text-xs text-slate-500">ユーザーID（ログイン用・変更不可）</p>
-        <p className="tabular mt-1 text-lg">{username ?? "—"}</p>
+      <section className="sticker-card mb-4 p-5">
+        <p className="text-xs font-bold text-muted">ユーザーID（ログイン用・変更不可）</p>
+        <p className="tabular mt-1 text-lg font-extrabold">{username ?? "—"}</p>
       </section>
 
-      <section className="mb-4 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="text-sm text-slate-400">プロフィール</h2>
+      <section className="sticker-card mb-4 space-y-4 p-5">
+        <h2 className="text-sm font-extrabold text-muted">プロフィール</h2>
 
         <label className="block">
-          <span className="mb-1 block text-sm text-slate-300">ニックネーム</span>
+          <span className="mb-1.5 block text-sm font-extrabold">ニックネーム</span>
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+            className="sticker-field"
           />
         </label>
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2">
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">年齢</span>
+            <span className="mb-1.5 block text-xs font-extrabold">年齢</span>
             <input
               inputMode="numeric"
               value={age}
               onChange={(e) => setAge(e.target.value)}
               placeholder="任意"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+              className="sticker-field px-3"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">身長(cm)</span>
+            <span className="mb-1.5 block text-xs font-extrabold">身長(cm)</span>
             <input
               inputMode="numeric"
               value={heightCm}
               onChange={(e) => setHeightCm(e.target.value)}
               placeholder="任意"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+              className="sticker-field px-3"
             />
           </label>
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">体重(kg)</span>
+            <span className="mb-1.5 block text-xs font-extrabold">体重(kg)</span>
             <input
               inputMode="numeric"
               value={weightKg}
               onChange={(e) => setWeightKg(e.target.value)}
               placeholder="任意"
-              className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+              className="sticker-field px-3"
             />
           </label>
         </div>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs font-bold leading-relaxed text-muted">
           体重は分解時間の推定にだけ使います（現在の推定：1時間あたり約{" "}
           {metabolismGramsPerHour(parsedWeight).toFixed(1)}g）。
         </p>
 
         <div>
-          <span className="mb-2 block text-sm text-slate-300">性別</span>
+          <span className="mb-2 block text-sm font-extrabold">性別</span>
           <div className="flex gap-2">
             {SEX_LABELS.map((option) => (
               <button
                 key={option.value}
                 onClick={() => setSex(option.value)}
-                className={`flex-1 rounded-lg border px-3 py-2 text-sm ${
-                  sex === option.value
-                    ? "border-amber-400 bg-amber-400/10"
-                    : "border-slate-700 bg-slate-950"
+                className={`flex-1 rounded-xl px-2 py-2.5 text-sm font-extrabold shadow-sticker ${
+                  sex === option.value ? "bg-beer" : "bg-cream"
                 }`}
               >
                 {option.label}
               </button>
             ))}
           </div>
-          <p className="mt-2 text-xs text-slate-500">
+          <p className="mt-2 text-xs font-bold leading-relaxed text-muted">
             リスクの目安の判定にだけ使います（現在：1日 {riskG}g 以上で注意表示）。
           </p>
         </div>
       </section>
 
-      <section className="mb-4 space-y-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="text-sm text-slate-400">🎯 飲酒目標</h2>
+      <section className="sticker-card mb-4 space-y-4 p-5">
+        <h2 className="text-sm font-extrabold text-muted">🎯 飲酒目標</h2>
 
         <label className="block">
-          <span className="mb-1 block text-sm text-slate-300">
+          <span className="mb-1.5 block text-sm font-extrabold">
             1回あたりの純アルコール量の上限(g)
           </span>
           <input
             inputMode="numeric"
             value={goalAlcohol}
             onChange={(e) => setGoalAlcohol(e.target.value)}
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+            className="sticker-field"
           />
           {parsedGoal !== null && (
-            <span className="mt-1 block text-xs text-slate-500">
+            <span className="mt-1.5 block text-xs font-bold leading-relaxed text-muted">
               ビール中ジョッキ 約 {toStandardDrinks(parsedGoal).toFixed(1)} 杯ぶん。
               「節度ある適度な飲酒」の目安は1日 {MODERATE_ALCOHOL_G}g とされています。
             </span>
@@ -226,58 +228,60 @@ export default function ProfilePage() {
         </label>
 
         <label className="block">
-          <span className="mb-1 block text-sm text-slate-300">杯数の目安（任意）</span>
+          <span className="mb-1.5 block text-sm font-extrabold">杯数の目安（任意）</span>
           <input
             inputMode="numeric"
             value={goalDrinks}
             onChange={(e) => setGoalDrinks(e.target.value)}
             placeholder="例：4"
-            className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 outline-none focus:border-amber-400"
+            className="sticker-field"
           />
-          <span className="mt-1 block text-xs text-slate-500">
+          <span className="mt-1.5 block text-xs font-bold leading-relaxed text-muted">
             杯数は補助的な表示です。達成の判定は純アルコール量で行います。
           </span>
         </label>
       </section>
 
-      <section className="mb-4 rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-3 text-sm text-slate-400">設定</h2>
-        <label className="flex items-center justify-between">
-          <span className="text-sm">飲み過ぎ・ペースの警告を出す</span>
+      <section className="sticker-card mb-4 p-5">
+        <h2 className="mb-3 text-sm font-extrabold text-muted">設定</h2>
+        <label className="flex items-center justify-between gap-3">
+          <span className="text-sm font-extrabold">飲み過ぎ・ペースの警告を出す</span>
           <input
             type="checkbox"
             checked={warningsEnabled}
             onChange={(e) => setWarningsEnabled(e.target.checked)}
-            className="h-5 w-5 accent-amber-500"
+            className="h-6 w-6 shrink-0 accent-beer"
           />
         </label>
       </section>
 
       {message && (
-        <p className="mb-3 rounded-lg bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+        <p className="mb-3 rounded-xl bg-mint px-3 py-2 text-sm font-bold text-ink shadow-sticker">
           {message}
         </p>
       )}
       {error && (
-        <p className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+        <p className="mb-3 rounded-xl bg-berry px-3 py-2 text-sm font-bold text-ink shadow-sticker">
+          {error}
+        </p>
       )}
 
       <button
         onClick={handleSave}
         disabled={saving}
-        className="mb-4 flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-50"
+        className="sticker-press mb-5 flex w-full items-center justify-center gap-2 rounded-xl bg-beer px-4 py-3.5 text-lg font-extrabold text-ink disabled:opacity-50"
       >
         {saving && <Loader2 className="h-4 w-4 animate-spin" />}
         保存する
       </button>
 
-      <p className="mb-6 text-xs leading-relaxed text-slate-500">{MEDICAL_DISCLAIMER}</p>
+      <p className="mb-5 text-xs font-bold leading-relaxed text-muted">{MEDICAL_DISCLAIMER}</p>
 
       <button
         onClick={handleSignOut}
-        className="flex w-full items-center justify-center gap-2 rounded-lg border border-slate-700 px-4 py-3 text-slate-300"
+        className="sticker-press flex w-full items-center justify-center gap-2 rounded-xl bg-paper px-4 py-3 font-extrabold text-ink"
       >
-        <LogOut className="h-4 w-4" />
+        <LogOut className="h-4 w-4" strokeWidth={3} />
         ログアウト
       </button>
 

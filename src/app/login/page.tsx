@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { onAuthStateChanged, signInWithEmailAndPassword } from "firebase/auth";
-import { Beer, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { auth } from "../lib/firebase";
 import { syntheticEmail, validateUsername } from "../lib/username";
 
@@ -47,62 +47,65 @@ export default function LoginPage() {
 
   if (checking) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-slate-400">
+      <main className="flex min-h-dvh items-center justify-center font-bold text-muted">
         読み込み中...
       </main>
     );
   }
 
   return (
-    <main className="flex min-h-dvh flex-col items-center justify-center px-6 py-10">
+    <main className="flex min-h-dvh flex-col items-center justify-center px-5 py-10">
       <div className="w-full max-w-sm">
-        <div className="mb-10 text-center">
-          <Beer className="mx-auto mb-3 h-10 w-10 text-amber-400" />
-          <h1 className="text-3xl font-bold tracking-widest text-amber-400">NOMISUGI</h1>
-          <p className="mt-2 text-sm text-slate-400">自分の飲み方を知る</p>
+        <div className="mb-8 text-center">
+          <span className="inline-block -rotate-2 rounded-2xl bg-beer px-6 py-3 text-3xl font-extrabold tracking-widest text-ink shadow-pop">
+            🍺 NOMISUGI
+          </span>
+          <p className="mt-5 font-bold text-muted">自分の飲み方を知る</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="sticker-card space-y-4 p-5">
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">ユーザーID</span>
+            <span className="mb-1.5 block text-sm font-extrabold">ユーザーID</span>
             <input
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               autoComplete="username"
               autoCapitalize="none"
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-amber-400"
+              className="sticker-field"
               placeholder="ryo_2026"
             />
           </label>
 
           <label className="block">
-            <span className="mb-1 block text-sm text-slate-300">パスワード</span>
+            <span className="mb-1.5 block text-sm font-extrabold">パスワード</span>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="current-password"
-              className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-slate-100 outline-none focus:border-amber-400"
+              className="sticker-field"
             />
           </label>
 
           {error && (
-            <p className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+            <p className="rounded-xl bg-berry px-3 py-2 text-sm font-bold text-ink shadow-sticker">
+              {error}
+            </p>
           )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500 px-4 py-3 font-bold text-slate-950 disabled:opacity-50"
+            className="sticker-press flex w-full items-center justify-center gap-2 rounded-xl bg-beer px-4 py-3 text-lg font-extrabold text-ink disabled:opacity-50"
           >
             {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
             ログイン
           </button>
         </form>
 
-        <p className="mt-6 text-center text-sm text-slate-400">
+        <p className="mt-6 text-center text-sm font-bold text-muted">
           はじめての方は{" "}
-          <Link href="/register" className="text-amber-400 underline">
+          <Link href="/register" className="text-beer-deep underline">
             アカウント作成
           </Link>
         </p>

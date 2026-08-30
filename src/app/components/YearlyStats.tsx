@@ -21,6 +21,17 @@ const METRICS: { id: Metric; label: string }[] = [
   { id: "alcohol", label: "純アルコール" },
 ];
 
+function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <div className="rounded-xl bg-cream px-3 py-2.5">
+      <dt className="text-xs font-bold text-muted">{label}</dt>
+      <dd className={`tabular text-2xl font-extrabold ${accent ? "text-beer-deep" : "text-ink"}`}>
+        {value}
+      </dd>
+    </div>
+  );
+}
+
 export default function YearlyStats({ sessions, year, onChangeYear }: Props) {
   const [metric, setMetric] = useState<Metric>("sessions");
   const summary = summarizeSessions(sessions);
@@ -36,8 +47,7 @@ export default function YearlyStats({ sessions, year, onChangeYear }: Props) {
     return {
       label: `${month}月`,
       value,
-      valueLabel:
-        metric === "alcohol" ? `${formatGrams(value)}g` : String(Math.round(value)),
+      valueLabel: metric === "alcohol" ? `${formatGrams(value)}g` : String(Math.round(value)),
     };
   });
 
@@ -45,70 +55,52 @@ export default function YearlyStats({ sessions, year, onChangeYear }: Props) {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-center gap-4">
+      <div className="flex items-center justify-center gap-3">
         <button
           onClick={() => onChangeYear(year - 1)}
-          className="rounded-lg border border-slate-700 px-3 py-1 text-sm text-slate-300"
+          className="sticker-press rounded-xl bg-paper px-3 py-1.5 text-sm font-extrabold"
         >
           ← {year - 1}
         </button>
-        <span className="tabular text-lg font-bold">{year}年</span>
+        <span className="tabular text-lg font-extrabold">{year}年</span>
         <button
           onClick={() => onChangeYear(year + 1)}
           disabled={year >= currentYear}
-          className="rounded-lg border border-slate-700 px-3 py-1 text-sm text-slate-300 disabled:opacity-30"
+          className="sticker-press rounded-xl bg-paper px-3 py-1.5 text-sm font-extrabold disabled:opacity-30"
         >
           {year + 1} →
         </button>
       </div>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <dl className="grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-xs text-slate-500">飲酒回数</dt>
-            <dd className="tabular text-2xl font-bold">{summary.sessionCount} 回</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">飲酒日数</dt>
-            <dd className="tabular text-2xl font-bold">{summary.drinkingDays} 日</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">総杯数</dt>
-            <dd className="tabular text-2xl font-bold">{summary.totalDrinks} 杯</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">純アルコール</dt>
-            <dd className="tabular text-2xl font-bold text-amber-400">
-              {summary.totalAlcoholG >= 1000
+      <section className="sticker-card p-5">
+        <dl className="grid grid-cols-2 gap-2">
+          <Stat label="飲酒回数" value={`${summary.sessionCount} 回`} />
+          <Stat label="飲酒日数" value={`${summary.drinkingDays} 日`} />
+          <Stat label="総杯数" value={`${summary.totalDrinks} 杯`} />
+          <Stat
+            label="純アルコール"
+            value={
+              summary.totalAlcoholG >= 1000
                 ? `${(summary.totalAlcoholG / 1000).toFixed(1)} kg`
-                : `${formatGrams(summary.totalAlcoholG)} g`}
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">推定カロリー</dt>
-            <dd className="tabular text-lg font-bold">
-              {formatInt(summary.totalCalories)} kcal
-            </dd>
-          </div>
+                : `${formatGrams(summary.totalAlcoholG)} g`
+            }
+            accent
+          />
+          <Stat label="推定カロリー" value={formatInt(summary.totalCalories)} />
           {summary.totalCost > 0 && (
-            <div>
-              <dt className="text-xs text-slate-500">飲酒費用</dt>
-              <dd className="tabular text-lg font-bold">{formatYen(summary.totalCost)}</dd>
-            </div>
+            <Stat label="飲酒費用" value={formatYen(summary.totalCost)} />
           )}
         </dl>
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
+      <section className="sticker-card p-5">
         <div className="mb-4 flex gap-2">
           {METRICS.map((option) => (
             <button
               key={option.id}
               onClick={() => setMetric(option.id)}
-              className={`flex-1 rounded-lg border px-2 py-1.5 text-xs ${
-                metric === option.id
-                  ? "border-amber-400 bg-amber-400/10 text-amber-200"
-                  : "border-slate-700 text-slate-400"
+              className={`flex-1 rounded-xl px-2 py-2 text-xs font-extrabold shadow-sticker ${
+                metric === option.id ? "bg-beer text-ink" : "bg-cream text-muted"
               }`}
             >
               {option.label}

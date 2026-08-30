@@ -3,31 +3,114 @@
 @tailwind utilities;
 
 :root {
-  --background: #0b1220;
-  --foreground: #e8eaf0;
+  --background: #ffeecc;
+  --foreground: #2e1b0e;
+}
+
+html,
+body {
+  min-height: 100%;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: system-ui, -apple-system, "Hiragino Kaku Gothic ProN",
-    "Noto Sans JP", "Yu Gothic", sans-serif;
-  /* iPhone のセーフエリア。下部ナビが指の届く位置に収まるように */
-  min-height: 100dvh;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* 数字を等幅にして、タイマーの桁が揺れないようにする */
+/* スマホ前提なので、誤操作を招くタップハイライトは抑止する（入力欄だけ選択を戻す） */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+input,
+textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+/* 数字を等幅にして、タイマーやグラフの桁が揺れないようにする */
 .tabular {
   font-variant-numeric: tabular-nums;
 }
 
-@keyframes fade-up {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0); }
+@layer components {
+  /* 押せるものは縁＋ずらした影。押すと影が消えて沈む。
+     「触れる場所」を色ではなく影の有無で伝えるので、色覚に依らず分かる */
+  .sticker-press {
+    @apply shadow-pop transition-[box-shadow,transform] duration-75;
+  }
+  .sticker-press:active:not(:disabled) {
+    @apply shadow-pop-in translate-x-[4px] translate-y-[4px];
+  }
+
+  /* 押せないもの。縁だけ付けて紙を貼った状態にする */
+  .sticker-card {
+    @apply rounded-2xl bg-paper shadow-sticker;
+  }
+
+  /* 入力欄。フォーカスは縁の外側にビール色の輪を足して示す */
+  .sticker-field {
+    @apply w-full rounded-xl bg-paper px-4 py-3 text-ink shadow-sticker outline-none;
+  }
+  .sticker-field::placeholder {
+    @apply text-faint;
+  }
+  .sticker-field:focus {
+    box-shadow:
+      0 0 0 3px #2e1b0e,
+      0 0 0 6px #f5a623;
+  }
 }
 
-.fade-up { animation: fade-up 240ms ease-out both; }
+/* ─── 記録したときの演出 ───────────────────────────── */
 
+/* カードがステッカーを叩きつけたように現れる */
+@keyframes sticker-pop-in {
+  0% {
+    transform: translateY(10px) scale(0.9) rotate(-1.5deg);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-3px) scale(1.04) rotate(0.8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(0) scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.pop-in {
+  animation: sticker-pop-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* 泡が上に立ちのぼる。カウンターの数字が増えたときに添える */
+@keyframes bubble-rise {
+  0% {
+    transform: translateY(0) scale(0.6);
+    opacity: 0;
+  }
+  25% {
+    opacity: 0.9;
+  }
+  100% {
+    transform: translateY(-34px) scale(1);
+    opacity: 0;
+  }
+}
+
+.bubble {
+  animation: bubble-rise 1400ms ease-out both;
+}
+
+/* 動きを減らす設定の端末では、弾ませずフェードだけにする */
 @media (prefers-reduced-motion: reduce) {
-  .fade-up { animation: none; }
+  .pop-in,
+  .bubble {
+    animation: none;
+  }
+  .sticker-press {
+    transition: none;
+  }
 }

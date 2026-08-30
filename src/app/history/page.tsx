@@ -45,7 +45,6 @@ export default function HistoryPage() {
 
   const [monthKey, setMonthKey] = useState(() => monthKeyOf(new Date()));
   const [year, setYear] = useState(() => new Date().getFullYear());
-  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const dayStartHour = profile?.settings.dayStartHour ?? DEFAULT_DAY_START_HOUR;
@@ -53,7 +52,6 @@ export default function HistoryPage() {
   const load = useCallback(async () => {
     if (!user) return;
     setError(null);
-    setBusy(true);
     try {
       if (tab === "history" && recent === null) {
         setRecent(await fetchRecentSessions(user.uid, HISTORY_PAGE_SIZE));
@@ -74,8 +72,6 @@ export default function HistoryPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "読み込みに失敗しました。");
-    } finally {
-      setBusy(false);
     }
   }, [user, tab, recent, monthCache, monthKey, yearCache, year, allSessions]);
 
@@ -85,7 +81,7 @@ export default function HistoryPage() {
 
   if (loading) {
     return (
-      <main className="flex min-h-dvh items-center justify-center text-slate-400">
+      <main className="flex min-h-dvh items-center justify-center font-bold text-muted">
         読み込み中...
       </main>
     );
@@ -102,17 +98,25 @@ export default function HistoryPage() {
     setMonthKey(monthKeyOf(date));
   }
 
-  return (
-    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-28 pt-8">
-      <h1 className="mb-4 text-2xl font-bold">📊 振り返る</h1>
+  const loadingText = (
+    <p className="py-16 text-center font-bold text-muted">読み込み中...</p>
+  );
 
-      <div className="mb-5 flex gap-1 rounded-xl border border-slate-800 bg-slate-900/60 p-1">
+  return (
+    <main className="mx-auto min-h-dvh w-full max-w-md px-4 pb-32 pt-8">
+      <h1 className="mb-5">
+        <span className="inline-block -rotate-2 rounded-xl bg-beer px-4 py-2 text-xl font-extrabold text-ink shadow-pop">
+          📊 振り返る
+        </span>
+      </h1>
+
+      <div className="mb-5 flex gap-1 rounded-2xl bg-paper p-1.5 shadow-sticker">
         {TABS.map((option) => (
           <button
             key={option.id}
             onClick={() => setTab(option.id)}
-            className={`flex-1 rounded-lg px-2 py-2 text-sm ${
-              tab === option.id ? "bg-amber-500 font-bold text-slate-950" : "text-slate-400"
+            className={`flex-1 rounded-xl px-2 py-2 text-sm font-extrabold ${
+              tab === option.id ? "bg-beer text-ink shadow-sticker" : "text-muted"
             }`}
           >
             {option.label}
@@ -121,66 +125,58 @@ export default function HistoryPage() {
       </div>
 
       {error && (
-        <p className="mb-4 rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-300">{error}</p>
+        <p className="mb-4 rounded-xl bg-berry px-3 py-2 text-sm font-bold text-ink shadow-sticker">
+          {error}
+        </p>
       )}
 
       {tab === "history" &&
-        (recent === null ? (
-          <p className="py-16 text-center text-slate-400">読み込み中...</p>
-        ) : (
-          <SessionHistoryList uid={user!.uid} sessions={recent} />
-        ))}
+        (recent === null ? loadingText : <SessionHistoryList uid={user!.uid} sessions={recent} />)}
 
       {tab === "monthly" && (
         <>
-          <div className="mb-4 flex items-center justify-center gap-4">
+          <div className="mb-4 flex items-center justify-center gap-3">
             <button
               onClick={() => shiftMonth(-1)}
               aria-label="前の月"
-              className="rounded-lg border border-slate-700 p-2 text-slate-300"
+              className="sticker-press rounded-xl bg-paper p-2"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-4 w-4" strokeWidth={3} />
             </button>
-            <span className="tabular text-sm">{monthKey}</span>
+            <span className="tabular text-sm font-extrabold">{monthKey}</span>
             <button
               onClick={() => shiftMonth(1)}
               disabled={monthKey >= currentMonthKey}
               aria-label="次の月"
-              className="rounded-lg border border-slate-700 p-2 text-slate-300 disabled:opacity-30"
+              className="sticker-press rounded-xl bg-paper p-2 disabled:opacity-30"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-4 w-4" strokeWidth={3} />
             </button>
           </div>
           {monthSessions === undefined ? (
-            <p className="py-16 text-center text-slate-400">読み込み中...</p>
+            loadingText
           ) : (
-            <MonthlyStats
-              sessions={monthSessions}
-              monthKey={monthKey}
-              riskAlcoholG={risk}
-            />
+            <MonthlyStats sessions={monthSessions} monthKey={monthKey} riskAlcoholG={risk} />
           )}
         </>
       )}
 
       {tab === "yearly" &&
         (yearSessions === undefined ? (
-          <p className="py-16 text-center text-slate-400">読み込み中...</p>
+          loadingText
         ) : (
           <YearlyStats sessions={yearSessions} year={year} onChangeYear={setYear} />
         ))}
 
       {tab === "pattern" &&
         (allSessions === null ? (
-          <p className="py-16 text-center text-slate-400">読み込み中...</p>
+          loadingText
         ) : (
           <div className="space-y-4">
             <PatternStats sessions={allSessions} dayStartHour={dayStartHour} />
             <AchievementList sessions={allSessions} dayStartHour={dayStartHour} />
           </div>
         ))}
-
-      {busy && <p className="mt-4 text-center text-xs text-slate-500">読み込み中...</p>}
 
       <BottomNav />
     </main>

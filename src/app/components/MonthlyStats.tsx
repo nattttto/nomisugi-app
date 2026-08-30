@@ -19,13 +19,13 @@ interface Props {
   riskAlcoholG: number;
 }
 
-/** 増減の矢印。飲酒量は「減った＝良い」なので、減少を緑にする */
+/** 増減の矢印。飲酒量は「減った＝良い」なので、減少を mint にする */
 function Delta({ value, unit }: { value: number; unit: string }) {
   const rounded = Math.round(value * 10) / 10;
   if (rounded === 0) {
     return (
-      <span className="flex items-center gap-0.5 text-xs text-slate-500">
-        <Minus className="h-3 w-3" />
+      <span className="flex items-center gap-0.5 text-xs font-extrabold text-muted">
+        <Minus className="h-3 w-3" strokeWidth={3} />
         変化なし
       </span>
     );
@@ -33,14 +33,40 @@ function Delta({ value, unit }: { value: number; unit: string }) {
   const decreased = rounded < 0;
   return (
     <span
-      className={`flex items-center gap-0.5 text-xs ${
-        decreased ? "text-emerald-400" : "text-red-400"
+      className={`flex items-center gap-0.5 rounded-full px-2 py-0.5 text-xs font-extrabold text-ink ${
+        decreased ? "bg-mint" : "bg-berry"
       }`}
     >
-      {decreased ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />}
+      {decreased ? (
+        <ArrowDown className="h-3 w-3" strokeWidth={3} />
+      ) : (
+        <ArrowUp className="h-3 w-3" strokeWidth={3} />
+      )}
       {Math.abs(rounded)}
       {unit}
     </span>
+  );
+}
+
+/** 大きな数字1つぶん */
+function Stat({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
+  return (
+    <div className="rounded-xl bg-cream px-3 py-2.5">
+      <dt className="text-xs font-bold text-muted">{label}</dt>
+      <dd
+        className={`tabular text-2xl font-extrabold ${accent ? "text-beer-deep" : "text-ink"}`}
+      >
+        {value}
+      </dd>
+    </div>
   );
 }
 
@@ -53,91 +79,61 @@ export default function MonthlyStats({ sessions, monthKey, riskAlcoholG }: Props
 
   return (
     <div className="space-y-4">
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-4 text-sm text-slate-400">
+      <section className="sticker-card p-5">
+        <h2 className="mb-4 text-sm font-extrabold text-muted">
           📊 {year}年{month}月
         </h2>
 
-        <dl className="grid grid-cols-2 gap-4">
-          <div>
-            <dt className="text-xs text-slate-500">飲酒日数</dt>
-            <dd className="tabular text-2xl font-bold">{current.drinkingDays} 日</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">飲酒回数</dt>
-            <dd className="tabular text-2xl font-bold">{current.sessionCount} 回</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">総杯数</dt>
-            <dd className="tabular text-2xl font-bold">{current.totalDrinks} 杯</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">純アルコール</dt>
-            <dd className="tabular text-2xl font-bold text-amber-400">
-              {formatGrams(current.totalAlcoholG)} g
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">推定カロリー</dt>
-            <dd className="tabular text-lg font-bold">
-              {formatInt(current.totalCalories)} kcal
-            </dd>
-          </div>
-          <div>
-            <dt className="text-xs text-slate-500">1回あたり平均</dt>
-            <dd className="tabular text-lg font-bold">
-              {current.avgDrinksPerSession.toFixed(1)} 杯
-            </dd>
-          </div>
+        <dl className="grid grid-cols-2 gap-2">
+          <Stat label="飲酒日数" value={`${current.drinkingDays} 日`} />
+          <Stat label="飲酒回数" value={`${current.sessionCount} 回`} />
+          <Stat label="総杯数" value={`${current.totalDrinks} 杯`} />
+          <Stat label="純アルコール" value={`${formatGrams(current.totalAlcoholG)} g`} accent />
+          <Stat label="推定カロリー" value={`${formatInt(current.totalCalories)}`} />
+          <Stat label="1回あたり平均" value={`${current.avgDrinksPerSession.toFixed(1)} 杯`} />
           {current.maxDrinks > 0 && (
-            <div>
-              <dt className="text-xs text-slate-500">1回の最大</dt>
-              <dd className="tabular text-lg font-bold">{current.maxDrinks} 杯</dd>
-            </div>
+            <Stat label="1回の最大" value={`${current.maxDrinks} 杯`} />
           )}
           {current.totalCost > 0 && (
-            <div>
-              <dt className="text-xs text-slate-500">飲酒費用</dt>
-              <dd className="tabular text-lg font-bold">{formatYen(current.totalCost)}</dd>
-            </div>
+            <Stat label="飲酒費用" value={formatYen(current.totalCost)} />
           )}
         </dl>
 
         {current.goalSetCount > 0 && (
-          <p className="mt-4 border-t border-slate-800 pt-3 text-sm text-slate-300">
+          <p className="mt-4 rounded-xl bg-mint px-3 py-2 text-center text-sm font-extrabold text-ink shadow-sticker">
             🎯 目標達成 {current.goalAchievedCount} / {current.goalSetCount} 回
           </p>
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-4 text-sm text-slate-400">先月との比較</h2>
+      <section className="sticker-card p-5">
+        <h2 className="mb-4 text-sm font-extrabold text-muted">先月との比較</h2>
         {previous.sessionCount === 0 ? (
-          <p className="text-sm text-slate-500">先月の記録がないので比べられません。</p>
+          <p className="text-sm font-bold text-muted">先月の記録がないので比べられません。</p>
         ) : (
-          <ul className="space-y-3 text-sm">
+          <ul className="space-y-3 text-sm font-extrabold">
             <li className="flex items-center justify-between">
-              <span className="text-slate-400">飲酒日</span>
+              <span className="text-muted">飲酒日</span>
               <Delta value={diff.drinkingDays} unit="日" />
             </li>
             <li className="flex items-center justify-between">
-              <span className="text-slate-400">総杯数</span>
+              <span className="text-muted">総杯数</span>
               <Delta value={diff.totalDrinks} unit="杯" />
             </li>
             <li className="flex items-center justify-between">
-              <span className="text-slate-400">純アルコール</span>
+              <span className="text-muted">純アルコール</span>
               <Delta value={diff.totalAlcoholG} unit="g" />
             </li>
             <li className="flex items-center justify-between">
-              <span className="text-slate-400">1回あたり平均</span>
+              <span className="text-muted">1回あたり平均</span>
               <Delta value={diff.avgDrinksPerSession} unit="杯" />
             </li>
           </ul>
         )}
       </section>
 
-      <section className="rounded-2xl border border-slate-800 bg-slate-900/60 p-5">
-        <h2 className="mb-4 text-sm text-slate-400">カレンダー</h2>
+      <section className="sticker-card p-5">
+        <h2 className="mb-4 text-sm font-extrabold text-muted">カレンダー</h2>
         <CalendarGrid monthKey={monthKey} totals={totals} riskAlcoholG={riskAlcoholG} />
       </section>
     </div>
